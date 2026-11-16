@@ -1,0 +1,3 @@
+ALTER TABLE jobs ALTER COLUMN ecu_manufacturer DROP NOT NULL;
+ALTER TABLE jobs ALTER COLUMN ecu_hardware_number DROP NOT NULL;
+ALTER TABLE jobs ALTER COLUMN ecu_software_number DROP NOT NULL;

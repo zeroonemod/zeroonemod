@@ -1,12 +1,34 @@
-import { SelectInput, TextInput } from '@/components/ui/FormControls';
+import { TextInput } from '@/components/ui/FormField';
+import { SelectInput } from '@/components/ui/Select';
 import { EcuStep } from '@/features/submission/steps/EcuStep';
-import { FUEL_OPTIONS, type StepProps } from '@/features/submission/types';
+import { FUEL_OPTIONS, type StepProps, type WizardForm } from '@/features/submission/types';
+import type { PreviousVehicle } from '@/features/submission/usePreviousVehicles';
 
-export function VehicleStep(props: StepProps) {
+interface VehicleStepProps extends StepProps {
+  previousVehicles?: PreviousVehicle[];
+  onApplyVehicle?: (fields: Partial<WizardForm>) => void;
+}
+
+export function VehicleStep({ previousVehicles = [], onApplyVehicle, ...props }: VehicleStepProps) {
   const { form, errors, update } = props;
 
   return (
     <div className="flex flex-col gap-8">
+      {previousVehicles.length > 0 && onApplyVehicle && (
+        <SelectInput
+          id="previousVehicle"
+          label="Use vehicle from a previous job"
+          optional
+          placeholder="Select a vehicle"
+          defaultValue=""
+          options={previousVehicles.map((vehicle) => ({ value: vehicle.id, label: vehicle.label }))}
+          onChange={(event) => {
+            const vehicle = previousVehicles.find((item) => item.id === event.target.value);
+            if (vehicle) onApplyVehicle(vehicle.fields);
+          }}
+          hint="Fills in the vehicle and ECU details below. You can still edit them."
+        />
+      )}
       <div className="grid gap-6 sm:grid-cols-2">
         <TextInput
           id="make"

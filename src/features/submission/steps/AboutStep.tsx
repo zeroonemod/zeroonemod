@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { CheckboxField, SelectInput, TextInput } from '@/components/ui/FormControls';
+import { CheckboxField, TextInput } from '@/components/ui/FormField';
+import { SelectInput } from '@/components/ui/Select';
 import { HoneypotField } from '@/components/ui/HoneypotField';
 import { ConfirmSummary } from '@/features/submission/ConfirmSummary';
 import { CUSTOMER_TYPE_OPTIONS, type CustomerType, type StepProps } from '@/features/submission/types';
@@ -7,9 +8,10 @@ import { CUSTOMER_TYPE_OPTIONS, type CustomerType, type StepProps } from '@/feat
 interface AboutStepProps extends StepProps {
   files: File[];
   accountComplete: boolean;
+  signedIn: boolean;
 }
 
-export function AboutStep({ form, errors, update, files, accountComplete }: AboutStepProps) {
+export function AboutStep({ form, errors, update, files, accountComplete, signedIn }: AboutStepProps) {
   return (
     <div className="flex flex-col gap-8">
       {!accountComplete && (
@@ -32,6 +34,7 @@ export function AboutStep({ form, errors, update, files, accountComplete }: Abou
             onChange={(event) => update('lastName', event.target.value)}
             error={errors.lastName}
           />
+          {!signedIn && (
           <TextInput
             id="email"
             label="Email"
@@ -43,6 +46,7 @@ export function AboutStep({ form, errors, update, files, accountComplete }: Abou
             error={errors.email}
             hint="We send your order updates and reference here."
           />
+          )}
           <TextInput
             id="country"
             label="Country"
@@ -85,6 +89,7 @@ export function AboutStep({ form, errors, update, files, accountComplete }: Abou
               error={errors.phone}
             />
           </div>
+          {!signedIn && (
           <div className="sm:col-span-2">
             <TextInput
               id="password"
@@ -98,6 +103,7 @@ export function AboutStep({ form, errors, update, files, accountComplete }: Abou
               hint="Creates your customer account so you can log in to follow this order. Leave it empty and we will email you a sign-in link instead."
             />
           </div>
+          )}
         </div>
       )}
 

@@ -1,6 +1,6 @@
 import { Cpu, Gauge, X } from 'lucide-react';
 import { RadioCards } from '@/components/ui/RadioCards';
-import { Dropzone } from '@/components/ui/Dropzone';
+import { UploadDropzone } from '@/components/ui/UploadDropzone';
 import { formatFileSize } from '@/lib/uploadLimits';
 import { useSubmissionFiles } from '@/features/submission/SubmissionFilesContext';
 import type { FileType, StepProps } from '@/features/submission/types';
@@ -51,7 +51,7 @@ export function FileTypeStep({ form, errors, update }: StepProps) {
           </ul>
         )}
 
-        <Dropzone
+        <UploadDropzone
           onFilesSelected={addFiles}
           title={files.length > 0 ? 'Add another file' : 'Drag and drop your original ECU/TCU file or click to upload'}
           description="Any file format. Up to 100 MB per file. Multiple files allowed."

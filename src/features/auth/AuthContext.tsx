@@ -6,6 +6,8 @@ import { ACCOUNT_ROLES, type AccountRole } from '@/features/auth/roles';
 export interface AccountProfile {
   id: string;
   role: AccountRole;
+  email: string | null;
+  is_active: boolean;
   full_name: string | null;
   company_name: string | null;
   country: string | null;
@@ -27,10 +29,12 @@ export const AuthContext = createContext<AuthState | null>(null);
 
 type ProfileResult = { ok: true; profile: AccountProfile } | { ok: false };
 
+const PROFILE_COLUMNS = 'id, role, email, is_active, full_name, company_name, country, phone, customer_type';
+
 async function fetchProfile(userId: string): Promise<ProfileResult> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, role, full_name, company_name, country, phone, customer_type')
+    .select(PROFILE_COLUMNS)
     .eq('id', userId)
     .maybeSingle();
 
@@ -38,7 +42,7 @@ async function fetchProfile(userId: string): Promise<ProfileResult> {
   if (!data) {
     return {
       ok: true,
-      profile: { id: userId, role: 'customer', full_name: null, company_name: null, country: null, phone: null, customer_type: null },
+      profile: { id: userId, role: 'customer', email: null, is_active: true, full_name: null, company_name: null, country: null, phone: null, customer_type: null },
     };
   }
   if (!ACCOUNT_ROLES.includes(data.role as AccountRole)) return { ok: false };
@@ -74,10 +78,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       void applySession(data.session);
     });
 
+    // Deferred so no Supabase call runs inside the auth callback (avoids a supabase-js lock).
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, next) => {
-      (async () => {
-        await applySession(next);
-      })();
+      setTimeout(() => void applySession(next), 0);
     });
 
     return () => {

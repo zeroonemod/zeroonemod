@@ -1,5 +1,5 @@
 import { RadioCards } from '@/components/ui/RadioCards';
-import { TextArea } from '@/components/ui/FormControls';
+import { TextArea } from '@/components/ui/FormField';
 import { SERVICE_OPTIONS, type RequestedService, type StepProps } from '@/features/submission/types';
 
 export function ServiceStep({ form, errors, update }: StepProps) {

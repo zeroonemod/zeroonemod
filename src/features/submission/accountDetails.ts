@@ -1,23 +1,28 @@
 import type { AccountProfile } from '@/features/auth/AuthContext';
 import type { CustomerType, WizardForm } from '@/features/submission/types';
 
-export function accountDetailsFor(email: string, profile: AccountProfile): Pick<WizardForm, 'firstName' | 'lastName' | 'email' | 'country' | 'customerType' | 'companyName' | 'phone' | 'password'> | null {
-  const [firstName = '', ...rest] = (profile.full_name ?? '').trim().split(/\s+/);
-  const lastName = rest.join(' ');
-  const customerType = profile.customer_type;
-  const isComplete =
-    Boolean(firstName && lastName && email && profile.country) &&
-    (customerType === 'individual' || (customerType === 'workshop' && Boolean(profile.company_name)));
-  if (!isComplete) return null;
+type AccountFields = Pick<WizardForm, 'firstName' | 'lastName' | 'email' | 'country' | 'customerType' | 'companyName' | 'phone'>;
 
+/** Splits the saved profile into wizard fields. */
+export function profileToForm(email: string, profile: AccountProfile): AccountFields {
+  const [firstName = '', ...rest] = (profile.full_name ?? '').trim().split(/\s+/);
+  const customerType: CustomerType | '' =
+    profile.role === 'partner' ? 'workshop' : profile.customer_type === 'individual' || profile.customer_type === 'workshop' ? profile.customer_type : '';
   return {
     firstName,
-    lastName,
+    lastName: rest.join(' '),
     email: email.trim().toLowerCase(),
     country: profile.country ?? '',
-    customerType: customerType as CustomerType,
+    customerType,
     companyName: profile.company_name ?? '',
     phone: profile.phone ?? '',
-    password: '',
   };
+}
+
+/** True when the profile has everything step 3 asks for, so a signed-in customer only confirms. */
+export function isProfileComplete(fields: AccountFields): boolean {
+  return (
+    Boolean(fields.firstName && fields.lastName && fields.email && fields.country && fields.customerType) &&
+    (fields.customerType === 'individual' || Boolean(fields.companyName))
+  );
 }

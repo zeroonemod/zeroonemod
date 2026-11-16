@@ -1,4 +1,4 @@
-import { TextArea, TextInput } from '@/components/ui/FormControls';
+import { TextArea, TextInput } from '@/components/ui/FormField';
 import type { StepProps } from '@/features/submission/types';
 
 export function EcuStep({ form, errors, update }: StepProps) {

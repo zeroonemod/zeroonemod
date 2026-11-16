@@ -1,17 +1,27 @@
+import { callFunction } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
-import type { WizardForm } from '@/features/submission/types';
 import { JOB_FILES_BUCKET as BUCKET, toStorageFileName } from '@/lib/storagePaths';
+import type { WizardForm } from '@/features/submission/types';
+
+export type AccountStatus = 'signed_in' | 'created' | 'exists' | 'invited' | 'unavailable';
 
 export interface SubmitResult {
   reference: string;
-  accountStatus: 'created' | 'exists' | 'invited' | 'unavailable';
+  accountStatus: AccountStatus;
+}
+
+interface UploadedFile {
+  storageName: string;
+  originalName: string;
+  sizeBytes: number;
+  mimeType: string;
 }
 
 function safeStorageName(index: number, name: string): string {
   return `${String(index + 1).padStart(2, '0')}-${toStorageFileName(name)}`;
 }
 
-function buildPayload(form: WizardForm, draftId: string, files: { storageName: string; originalName: string; sizeBytes: number; mimeType: string }[]) {
+function buildPayload(form: WizardForm, draftId: string, files: UploadedFile[]) {
   return {
     draftId,
     files,
@@ -47,37 +57,30 @@ function buildPayload(form: WizardForm, draftId: string, files: { storageName: s
   };
 }
 
-export async function submitJob(form: WizardForm, files: File[]): Promise<SubmitResult> {
+/** Uploads the files into a private pending folder, then asks the server to create the job. */
+export async function submitJob(form: WizardForm, files: File[], onProgress?: (done: number, total: number) => void): Promise<SubmitResult> {
   const draftId = crypto.randomUUID();
+  const uploaded: UploadedFile[] = [];
 
-  const uploaded = [];
   for (const [index, file] of files.entries()) {
+    onProgress?.(index, files.length);
     const storageName = safeStorageName(index, file.name);
     const { error } = await supabase.storage
       .from(BUCKET)
       .upload(`pending/${draftId}/${storageName}`, file, { upsert: false, contentType: file.type || 'application/octet-stream' });
-    if (error) throw new Error('upload_failed');
-    uploaded.push({
-      storageName,
-      originalName: file.name,
-      sizeBytes: file.size,
-      mimeType: file.type || 'application/octet-stream',
-    });
+    if (error) throw new Error(`The file ${file.name} could not be uploaded. Please check your connection and try again.`);
+    uploaded.push({ storageName, originalName: file.name, sizeBytes: file.size, mimeType: file.type || 'application/octet-stream' });
   }
+  onProgress?.(files.length, files.length);
 
-  const { data, error } = await supabase.functions.invoke('submit-job', {
-    body: buildPayload(form, draftId, uploaded),
-  });
-  if (error) throw new Error('submit_failed');
-
-  const result = data as Partial<SubmitResult> | null;
+  const result = await callFunction<Partial<SubmitResult>>('submit-job', buildPayload(form, draftId, uploaded));
   if (!result || typeof result.reference !== 'string' || typeof result.accountStatus !== 'string') {
-    throw new Error('submit_failed');
+    throw new Error('We could not send your submission. Your details are still here, so please try again.');
   }
 
   if (form.password && result.accountStatus === 'created') {
     await supabase.auth.signInWithPassword({ email: form.email.trim().toLowerCase(), password: form.password });
   }
 
-  return { reference: result.reference, accountStatus: result.accountStatus as SubmitResult['accountStatus'] };
+  return { reference: result.reference, accountStatus: result.accountStatus as AccountStatus };
 }

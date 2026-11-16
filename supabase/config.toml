@@ -1,5 +1,19 @@
+# Every function checks the caller itself (JWT, cron secret or provider signature),
+# so the gateway JWT check is switched off to work with both legacy and new API keys.
 [functions.submit-job]
 verify_jwt = false
 
 [functions.submit-request]
+verify_jwt = false
+
+[functions.notify]
+verify_jwt = false
+
+[functions.admin-users]
+verify_jwt = false
+
+[functions.retention-cleanup]
+verify_jwt = false
+
+[functions.payment-webhook]
 verify_jwt = false

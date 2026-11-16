@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { Loader2, Mail } from 'lucide-react';
+import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
-import { TextInput } from '@/components/ui/FormControls';
+import { TextInput } from '@/components/ui/FormField';
 import { isValidEmail } from '@/lib/requestForms';
 import { supabase } from '@/lib/supabase';
 
@@ -28,6 +29,8 @@ export function LoginForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const failures = useRef(0);
+  const lockedUntil = useRef(0);
 
   const switchMode = (next: Mode) => {
     setMode(next);
@@ -51,13 +54,25 @@ export function LoginForm() {
       return;
     }
 
+    if (mode === 'password' && Date.now() < lockedUntil.current) {
+      setFormError('Too many attempts. Please wait a minute and try again, or use a login link.');
+      return;
+    }
+
     setLoading(true);
     const origin = window.location.origin;
     const cleanEmail = email.trim();
 
     if (mode === 'password') {
       const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
-      if (error) setFormError(describeAuthError(error));
+      if (error) {
+        setFormError(describeAuthError(error));
+        failures.current += 1;
+        if (failures.current >= 5) {
+          failures.current = 0;
+          lockedUntil.current = Date.now() + 60_000;
+        }
+      }
     } else if (mode === 'magic') {
       const { error } = await supabase.auth.signInWithOtp({
         email: cleanEmail,
@@ -67,7 +82,7 @@ export function LoginForm() {
       else setNotice('If an account exists for this email, a login link is on its way. Check your inbox.');
     } else {
       const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: `${origin}/dashboard/profile`,
+        redirectTo: `${origin}/dashboard/profile?reset=1`,
       });
       if (error && error.status === 429) setFormError('Too many attempts. Please wait a few minutes and try again.');
       else setNotice('If an account exists for this email, a reset link is on its way.');
@@ -112,16 +127,8 @@ export function LoginForm() {
         </div>
       )}
 
-      {formError && (
-        <p role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-          {formError}
-        </p>
-      )}
-      {notice && (
-        <p role="status" className="rounded-lg border border-white/15 bg-white/[0.03] px-4 py-3 text-sm text-neutral-200">
-          {notice}
-        </p>
-      )}
+      {formError && <Alert>{formError}</Alert>}
+      {notice && <Alert tone="info">{notice}</Alert>}
 
       <Button type="submit" size="lg" disabled={loading} className="w-full">
         {loading ? (

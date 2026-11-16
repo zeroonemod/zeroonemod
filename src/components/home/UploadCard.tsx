@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/Card';
-import { Dropzone } from '@/components/ui/Dropzone';
+import { UploadDropzone } from '@/components/ui/UploadDropzone';
 import { useSubmissionFiles } from '@/features/submission/SubmissionFilesContext';
 
 export function UploadCard() {
@@ -21,7 +21,7 @@ export function UploadCard() {
           Your file stays on this device until you submit. You will complete a short guided form next.
         </p>
       </div>
-      <Dropzone onFilesSelected={handleFiles} />
+      <UploadDropzone onFilesSelected={handleFiles} />
     </Card>
   );
 }

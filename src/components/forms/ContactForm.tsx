@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { Check, Loader2 } from 'lucide-react';
+import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { CheckboxField, TextArea, TextInput } from '@/components/ui/FormControls';
+import { CheckboxField, TextArea, TextInput } from '@/components/ui/FormField';
 import { HoneypotField } from '@/components/ui/HoneypotField';
 import { describeRequestError, isValidEmail, submitRequest } from '@/lib/requestForms';
 
@@ -130,11 +131,7 @@ export function ContactForm() {
           .
         </CheckboxField>
 
-        {serverError && (
-          <p role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-            {serverError}
-          </p>
-        )}
+        {serverError && <Alert>{serverError}</Alert>}
 
         <div className="flex justify-end">
           <Button type="submit" size="lg" disabled={status === 'sending'} className="w-full sm:w-auto">

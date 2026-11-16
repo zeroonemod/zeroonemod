@@ -1,5 +1,6 @@
 import { LegalDocument, LegalParagraphs } from '@/components/content/LegalDocument';
 import { SITE_CONFIG } from '@/lib/siteConfig';
+import { openCookieSettings } from '@/components/layout/CookieBanner';
 
 export function CookiePolicyPage() {
   return (
@@ -50,6 +51,15 @@ export function CookiePolicyPage() {
               <p>
                 You can delete or block cookies in your browser settings. Blocking strictly necessary storage may stop
                 parts of the website, such as the signed-in area, from working.
+              </p>
+              <p>
+                <button
+                  type="button"
+                  onClick={openCookieSettings}
+                  className="text-white underline underline-offset-4 hover:text-neutral-300"
+                >
+                  Change your cookie settings
+                </button>
               </p>
             </LegalParagraphs>
           ),

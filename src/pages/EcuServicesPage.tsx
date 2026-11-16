@@ -55,8 +55,8 @@ export function EcuServicesPage() {
     >
       <ServiceGrid services={SERVICES} />
       <NoticeCard>
-        Not every ECU, software version or vehicle is supported. Compatibility depends on the control unit, its
-        software and its hardware condition. We confirm what is possible after reviewing your file. Modified files
+        Not every ECU, software version or vehicle is supported. Compatibility and availability depend on the ECU,
+        the vehicle and the original file, including the control unit software and its hardware condition. We confirm what is possible after reviewing your file. Modified files
         are for off-road or competition use where permitted by law, and it is your responsibility to check local
         regulations.
       </NoticeCard>

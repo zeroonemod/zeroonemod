@@ -1,4 +1,4 @@
-import { Navigate, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { Card } from '@/components/ui/Card';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { LoginForm } from '@/features/auth/LoginForm';
@@ -8,7 +8,7 @@ import { LoadingState } from '@/components/ui/LoadingState';
 import { useDocumentMeta } from '@/lib/useDocumentMeta';
 
 export function LoginPage() {
-  useDocumentMeta({ title: 'Log in | ZEROONEMOD', description: 'Log in to your ZEROONEMOD account to track jobs and files.' });
+  useDocumentMeta({ title: 'Log in | ZEROONEMOD', description: 'Log in to your ZEROONEMOD account to track jobs and files.', noindex: true });
   const { status, profile } = useAuth();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from;
@@ -39,9 +39,9 @@ export function LoginPage() {
 
         <p className="text-center text-sm leading-[1.5] text-neutral-400">
           Workshop or business?{' '}
-          <a href="/b2b-partnerships" className="text-white underline underline-offset-4 hover:text-neutral-300">
+          <Link to="/b2b-partnerships" className="text-white underline underline-offset-4 hover:text-neutral-300">
             Request partner access
-          </a>
+          </Link>
         </p>
       </div>
     </PageLayout>

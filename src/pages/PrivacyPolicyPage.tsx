@@ -21,9 +21,8 @@ export function PrivacyPolicyPage() {
           body: (
             <LegalParagraphs>
               <p>
-                The controller of your personal data is {SITE_CONFIG.companyLegalName}, {SITE_CONFIG.companyAddress},
-                Tax ID {SITE_CONFIG.companyTaxId} (&quot;ZEROONEMOD&quot;, &quot;we&quot;). You can contact us at{' '}
-                {SITE_CONFIG.businessEmail}.
+                The controller of your personal data is {SITE_CONFIG.companyLegalName} (&quot;ZEROONEMOD&quot;, &quot;we&quot;). You can
+                contact us at {SITE_CONFIG.businessEmail}.
               </p>
             </LegalParagraphs>
           ),

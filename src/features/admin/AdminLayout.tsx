@@ -4,6 +4,7 @@ import { Briefcase, HelpCircle, Handshake, LayoutDashboard, LogOut, Menu, Messag
 import { Wordmark } from '@/components/layout/Wordmark';
 import { useAuth } from '@/features/auth/useAuth';
 import { useDocumentMeta } from '@/lib/useDocumentMeta';
+import { useMessageThreads } from '@/features/jobs/useMessageThreads';
 
 const ADMIN_NAV = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -21,7 +22,8 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   }`;
 
 export function AdminLayout() {
-  useDocumentMeta({ title: 'Admin | ZEROONEMOD', description: 'ZEROONEMOD admin panel.' });
+  useDocumentMeta({ title: 'Admin | ZEROONEMOD', description: 'ZEROONEMOD admin panel.', noindex: true });
+  const { unreadTotal } = useMessageThreads('admin');
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -64,6 +66,7 @@ export function AdminLayout() {
                   <NavLink to={item.to} end={item.end} className={navLinkClass}>
                     <Icon className="h-4 w-4" aria-hidden="true" />
                     {item.label}
+                    {item.to === '/admin/messages' && unreadTotal > 0 && <span className="ml-auto rounded-full bg-brand-500 px-1.5 text-[11px] font-semibold text-white">{unreadTotal}</span>}
                   </NavLink>
                 </li>
               );
@@ -117,6 +120,7 @@ export function AdminLayout() {
                       <NavLink to={item.to} end={item.end} onClick={() => setDrawerOpen(false)} className={navLinkClass}>
                         <Icon className="h-4 w-4" aria-hidden="true" />
                         {item.label}
+                        {item.to === '/admin/messages' && unreadTotal > 0 && <span className="ml-auto rounded-full bg-brand-500 px-1.5 text-[11px] font-semibold text-white">{unreadTotal}</span>}
                       </NavLink>
                     </li>
                   );

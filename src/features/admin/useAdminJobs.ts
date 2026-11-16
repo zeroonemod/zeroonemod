@@ -2,21 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { JOB_COLUMNS, type JobRow } from '@/features/jobs/jobTypes';
 import { supabase } from '@/lib/supabase';
 
-export interface AdminJobsState {
-  jobs: JobRow[] | null;
-  error: boolean;
-  reload: () => Promise<void>;
-}
-
-export function useAdminJobs(): AdminJobsState {
+export function useAdminJobs() {
   const [jobs, setJobs] = useState<JobRow[] | null>(null);
   const [error, setError] = useState(false);
 
   const reload = useCallback(async () => {
-    const { data, error: queryError } = await supabase
-      .from('jobs')
-      .select(JOB_COLUMNS)
-      .order('created_at', { ascending: false });
+    const { data, error: queryError } = await supabase.from('jobs').select(JOB_COLUMNS).order('created_at', { ascending: false }).limit(5000);
     if (queryError || !Array.isArray(data)) {
       setError(true);
       return;

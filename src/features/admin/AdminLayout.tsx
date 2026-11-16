@@ -38,11 +38,11 @@ export function AdminLayout() {
     <div className="min-h-screen bg-canvas text-white lg:grid lg:grid-cols-[240px_1fr]">
       <aside className="border-b border-white/[0.08] bg-surface-sunken lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:border-b-0 lg:border-r">
         <div className="flex h-16 items-center justify-between gap-4 px-4 lg:h-20 lg:px-6">
-          <Link to="/" aria-label="ZEROONEMOD home">
-            <Wordmark />
+          <Link to="/" aria-label="ZEROONEMOD home" className="min-w-0">
+            <Wordmark className="h-5" />
           </Link>
           <div className="flex items-center gap-3">
-            <span className="hidden rounded-full border border-white/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 sm:inline-block lg:inline-block">
+            <span className="hidden shrink-0 whitespace-nowrap rounded-full border border-white/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 sm:inline-block lg:inline-block">
               Admin
             </span>
             <button

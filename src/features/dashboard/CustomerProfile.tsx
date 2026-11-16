@@ -1,25 +1,17 @@
-import { useState, type FormEvent } from 'react';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
+import { Loader2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { NoticeLine, type Notice } from '@/components/ui/Alert';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { TextInput } from '@/components/ui/FormControls';
+import { TextInput } from '@/components/ui/FormField';
 import { useAuth } from '@/features/auth/useAuth';
 import { supabase } from '@/lib/supabase';
 
-type Notice = { tone: 'success' | 'error'; text: string } | null;
-
-function NoticeLine({ notice }: { notice: Notice }) {
-  if (!notice) return null;
-  return (
-    <p role={notice.tone === 'error' ? 'alert' : 'status'} className={`flex items-center gap-2 text-sm ${notice.tone === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>
-      {notice.tone === 'success' && <CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
-      {notice.text}
-    </p>
-  );
-}
-
 export function CustomerProfile() {
   const { user, profile, refreshProfile } = useAuth();
+  const [searchParams] = useSearchParams();
+  const isReset = searchParams.get('reset') === '1';
   const [details, setDetails] = useState({
     full_name: profile?.full_name ?? '',
     company_name: profile?.company_name ?? '',
@@ -38,6 +30,10 @@ export function CustomerProfile() {
   const [confirmingDeletion, setConfirmingDeletion] = useState(false);
   const [deletionSending, setDeletionSending] = useState(false);
   const [deletionNotice, setDeletionNotice] = useState<Notice>(null);
+
+  useEffect(() => {
+    if (isReset) document.getElementById('password')?.scrollIntoView({ block: 'center' });
+  }, [isReset]);
 
   const saveDetails = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -104,10 +100,10 @@ export function CustomerProfile() {
         <h2 className="text-lg font-semibold text-white">Your details</h2>
         <p className="mt-1 text-sm text-neutral-400">Signed in as {user?.email}</p>
         <form onSubmit={saveDetails} className="mt-6 grid gap-5 sm:grid-cols-2">
-          <TextInput id="profile-name" label="Full name" value={details.full_name} onChange={(e) => setDetails({ ...details, full_name: e.target.value })} autoComplete="name" />
-          <TextInput id="profile-phone" label="Phone" type="tel" optional value={details.phone} onChange={(e) => setDetails({ ...details, phone: e.target.value })} autoComplete="tel" />
-          <TextInput id="profile-company" label="Company" optional value={details.company_name} onChange={(e) => setDetails({ ...details, company_name: e.target.value })} autoComplete="organization" />
-          <TextInput id="profile-country" label="Country" optional value={details.country} onChange={(e) => setDetails({ ...details, country: e.target.value })} autoComplete="country-name" />
+          <TextInput id="profile-name" label="Full name" value={details.full_name} onChange={(e: ChangeEvent<HTMLInputElement>) => setDetails({ ...details, full_name: e.target.value })} autoComplete="name" />
+          <TextInput id="profile-phone" label="Phone" type="tel" optional value={details.phone} onChange={(e: ChangeEvent<HTMLInputElement>) => setDetails({ ...details, phone: e.target.value })} autoComplete="tel" />
+          <TextInput id="profile-company" label="Company" optional value={details.company_name} onChange={(e: ChangeEvent<HTMLInputElement>) => setDetails({ ...details, company_name: e.target.value })} autoComplete="organization" />
+          <TextInput id="profile-country" label="Country" optional value={details.country} onChange={(e: ChangeEvent<HTMLInputElement>) => setDetails({ ...details, country: e.target.value })} autoComplete="country-name" />
           <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
             <NoticeLine notice={detailsNotice} />
             <Button type="submit" disabled={savingDetails} className="w-full sm:ml-auto sm:w-auto">
@@ -119,10 +115,11 @@ export function CustomerProfile() {
       </Card>
 
       <Card padding="lg">
-        <h2 className="text-lg font-semibold text-white">Change password</h2>
+        <h2 id="password" className="scroll-mt-24 text-lg font-semibold text-white">{isReset ? 'Choose a new password' : 'Change password'}</h2>
+        {isReset && <p className="mt-2 text-sm text-neutral-400">You are signed in through your email link. Set a password to log in with it next time.</p>}
         <form onSubmit={changePassword} className="mt-6 flex flex-col gap-5" noValidate>
-          <TextInput id="profile-new-password" label="New password" type="password" autoComplete="new-password" value={passwords.next} error={passwordErrors.next} hint="At least 8 characters." onChange={(e) => setPasswords({ ...passwords, next: e.target.value })} />
-          <TextInput id="profile-confirm-password" label="Confirm new password" type="password" autoComplete="new-password" value={passwords.confirm} error={passwordErrors.confirm} onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })} />
+          <TextInput id="profile-new-password" label="New password" type="password" autoComplete="new-password" value={passwords.next} error={passwordErrors.next} hint="At least 8 characters." onChange={(e: ChangeEvent<HTMLInputElement>) => setPasswords({ ...passwords, next: e.target.value })} />
+          <TextInput id="profile-confirm-password" label="Confirm new password" type="password" autoComplete="new-password" value={passwords.confirm} error={passwordErrors.confirm} onChange={(e: ChangeEvent<HTMLInputElement>) => setPasswords({ ...passwords, confirm: e.target.value })} />
           <div className="flex flex-col gap-3">
             <NoticeLine notice={passwordNotice} />
             <Button type="submit" variant="secondary" disabled={savingPassword} className="w-full sm:w-auto sm:self-start">

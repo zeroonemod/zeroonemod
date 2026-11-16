@@ -1,35 +1,31 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, CreditCard, Download, Lock } from 'lucide-react';
+import { ArrowLeft, CreditCard, Download, ExternalLink, Lock } from 'lucide-react';
+import { buttonClasses } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { LoadingState } from '@/components/ui/LoadingState';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { StatusStepper } from '@/components/ui/Stepper';
+import { notify } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import { FileDownloadList, FileUploader } from '@/features/jobs/JobFileActions';
+import { JobVehicleDetails } from '@/features/jobs/JobInfo';
 import { JobMessages } from '@/features/jobs/JobMessages';
 import { formatDate, formatMoney } from '@/features/jobs/jobFormat';
-import { StatusBadge, StatusStepper } from '@/features/jobs/JobStatusViews';
-import { JOB_COLUMNS, SERVICE_LABELS, type JobFileRow, type JobRow } from '@/features/jobs/jobTypes';
-import { supabase } from '@/lib/supabase';
+import { FILE_COLUMNS, JOB_COLUMNS, JOB_STATUSES, SERVICE_LABELS, vehicleLabel, type JobFileRow, type JobRow } from '@/features/jobs/jobTypes';
 
 interface LoadedJob {
   job: JobRow;
   files: JobFileRow[];
 }
 
-const FILE_COLUMNS = 'id, job_id, kind, file_name, storage_path, size_bytes, created_at';
-
 async function loadJob(reference: string): Promise<LoadedJob | 'not_found' | 'error'> {
   const { data, error } = await supabase.from('jobs').select(JOB_COLUMNS).eq('reference', reference).maybeSingle();
   if (error) return 'error';
   if (!data) return 'not_found';
   const job = data as unknown as JobRow;
-
-  const { data: fileData, error: fileError } = await supabase
-    .from('job_files')
-    .select(FILE_COLUMNS)
-    .eq('job_id', job.id)
-    .order('created_at', { ascending: true });
+  const { data: fileData, error: fileError } = await supabase.from('job_files').select(FILE_COLUMNS).eq('job_id', job.id).order('created_at');
   if (fileError || !Array.isArray(fileData)) return 'error';
-
   return { job, files: fileData as unknown as JobFileRow[] };
 }
 
@@ -53,7 +49,7 @@ export function CustomerJobDetail({ reference }: { reference: string }) {
 
   if (state === 'loading') return <LoadingState label="Loading your job" />;
 
-  if (state === 'error' || state === 'not_found' || !loaded) {
+  if (state !== 'ready' || !loaded) {
     return (
       <div className="flex flex-col gap-6">
         <BackLink />
@@ -71,20 +67,20 @@ export function CustomerJobDetail({ reference }: { reference: string }) {
   const completed = files.filter((file) => file.kind === 'completed');
   const additional = files.filter((file) => file.kind === 'additional');
   const isPaid = job.payment_status === 'paid';
-  const canDownload = isPaid && completed.length > 0;
-  const canPay = job.status === 'Awaiting Payment' && !!job.payment_link && !isPaid;
+  const isDelivered = job.status === 'Delivered';
+  const canDownload = isPaid && isDelivered && completed.length > 0;
+  const canPay = !isPaid && Boolean(job.payment_link) && (job.status === 'Awaiting Payment' || job.status === 'Quotation Sent');
 
   return (
     <div className="flex flex-col gap-8">
       <BackLink />
 
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-col gap-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">Job reference</p>
+        <div className="flex min-w-0 flex-col gap-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-400">Job reference</p>
           <h1 className="text-3xl font-semibold leading-[1.2] text-white sm:text-4xl">{job.reference}</h1>
           <p className="text-sm text-neutral-400">
-            {job.vehicle_year} {job.vehicle_make} {job.vehicle_model} · {job.file_type} ·{' '}
-            {SERVICE_LABELS[job.requested_service] ?? job.requested_service}
+            {vehicleLabel(job)} · {job.file_type} · {SERVICE_LABELS[job.requested_service] ?? job.requested_service}
           </p>
         </div>
         <StatusBadge status={job.status} />
@@ -92,30 +88,52 @@ export function CustomerJobDetail({ reference }: { reference: string }) {
 
       <Card padding="sm">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-neutral-400">Progress</h2>
-        <StatusStepper status={job.status} />
+        <StatusStepper steps={JOB_STATUSES} current={job.status} />
       </Card>
+
+      {job.status === 'Awaiting Information' && (
+        <Card padding="lg" className="border-brand-500/40">
+          <h2 className="mb-2 text-lg font-semibold text-white">We need more information</h2>
+          <p className="mb-5 text-sm leading-[1.5] text-neutral-400">Please read our message below and upload any extra files we asked for.</p>
+          <FileUploader
+            jobId={job.id}
+            reference={job.reference}
+            kind="additional"
+            title="Upload additional files"
+            description="For example a second ECU read or a photo of the label. Any format, up to 100 MB per file."
+            onUploaded={() => {
+              notify(job.id, 'additional_files');
+              void refresh();
+            }}
+          />
+          {additional.length > 0 && (
+            <div className="mt-6 border-t border-white/[0.08] pt-5">
+              <p className="mb-3 text-sm font-medium text-neutral-200">Files you sent</p>
+              <FileDownloadList files={additional} emptyText="" />
+            </div>
+          )}
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card padding="lg">
           <h2 className="mb-5 text-lg font-semibold text-white">Submitted information</h2>
-          <dl className="grid gap-4 text-sm sm:grid-cols-2">
-            <Detail label="Submitted" value={formatDate(job.created_at)} />
-            <Detail label="Service" value={SERVICE_LABELS[job.requested_service] ?? job.requested_service} />
-            <Detail label="Vehicle" value={`${job.vehicle_year} ${job.vehicle_make} ${job.vehicle_model}`} />
-            <Detail label="Engine" value={job.vehicle_engine} />
-            <Detail label="ECU manufacturer" value={job.ecu_manufacturer} />
-            <Detail label="ECU hardware number" value={job.ecu_hardware_number} />
-            <Detail label="ECU software number" value={job.ecu_software_number} />
-            <Detail label="VIN" value={job.vehicle_vin} />
-          </dl>
+          <JobVehicleDetails job={job} />
           {job.service_comments && (
-            <p className="mt-5 whitespace-pre-wrap border-t border-white/[0.08] pt-5 text-sm leading-[1.5] text-neutral-300">
-              {job.service_comments}
-            </p>
+            <p className="mt-5 whitespace-pre-wrap border-t border-white/[0.08] pt-5 text-sm leading-[1.5] text-neutral-300">{job.service_comments}</p>
           )}
           <div className="mt-5 border-t border-white/[0.08] pt-5">
             <p className="mb-3 text-sm font-medium text-neutral-200">Your original files</p>
-            <FileDownloadList files={originals} emptyText="No original files on this job." />
+            <FileDownloadList
+              files={originals}
+              emptyText={job.files_deleted_at ? 'Files were removed under our retention policy.' : 'No original files on this job.'}
+            />
+            {job.status !== 'Awaiting Information' && additional.length > 0 && (
+              <>
+                <p className="mb-3 mt-5 text-sm font-medium text-neutral-200">Additional files</p>
+                <FileDownloadList files={additional} emptyText="" />
+              </>
+            )}
           </div>
         </Card>
 
@@ -135,7 +153,7 @@ export function CustomerJobDetail({ reference }: { reference: string }) {
 
           <Card padding="lg">
             <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-white">
-              <CreditCard className="h-5 w-5" aria-hidden="true" />
+              <CreditCard className="h-5 w-5 text-brand-500" aria-hidden="true" />
               Payment
             </h2>
             <div className="flex flex-col gap-5">
@@ -146,14 +164,10 @@ export function CustomerJobDetail({ reference }: { reference: string }) {
                     ? 'Your quotation is ready to pay. The payment page opens in a new tab.'
                     : 'Not paid yet. Payment becomes available once your quotation is ready.'}
               </p>
-              {canPay && (
-                <a
-                  href={job.payment_link ?? undefined}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex h-12 items-center justify-center rounded-lg bg-red-600 px-6 text-sm font-semibold tracking-wide text-white transition-colors duration-200 hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
-                >
-                  PAY NOW
+              {canPay && job.payment_link && (
+                <a href={job.payment_link} target="_blank" rel="noopener noreferrer" className={buttonClasses('primary', 'lg', 'w-full sm:w-auto sm:self-start')}>
+                  Pay now
+                  <ExternalLink className="h-4 w-4" aria-hidden="true" />
                 </a>
               )}
             </div>
@@ -161,7 +175,7 @@ export function CustomerJobDetail({ reference }: { reference: string }) {
 
           <Card padding="lg">
             <h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-white">
-              <Download className="h-5 w-5" aria-hidden="true" />
+              <Download className="h-5 w-5 text-brand-500" aria-hidden="true" />
               Your modified file
             </h2>
             {canDownload ? (
@@ -176,27 +190,10 @@ export function CustomerJobDetail({ reference }: { reference: string }) {
         </div>
       </div>
 
-      {job.status === 'Awaiting Information' && (
-        <Card padding="lg">
-          <FileUploader
-            jobId={job.id}
-            reference={job.reference}
-            kind="additional"
-            title="Send additional files"
-            description="We need more information about this file. Upload any extra files, such as a second ECU read or a photo of the label."
-            onUploaded={() => void refresh()}
-          />
-          {additional.length > 0 && (
-            <div className="mt-6 border-t border-white/[0.08] pt-5">
-              <p className="mb-3 text-sm font-medium text-neutral-200">Files you sent</p>
-              <FileDownloadList files={additional} emptyText="" />
-            </div>
-          )}
-        </Card>
-      )}
-
       <Card padding="lg">
-        <h2 className="mb-5 text-lg font-semibold text-white">Messages</h2>
+        <h2 id="messages" className="mb-5 scroll-mt-24 text-lg font-semibold text-white">
+          Messages
+        </h2>
         <JobMessages jobId={job.id} viewer="customer" />
       </Card>
     </div>
@@ -205,21 +202,9 @@ export function CustomerJobDetail({ reference }: { reference: string }) {
 
 function BackLink() {
   return (
-    <Link
-      to="/dashboard"
-      className="inline-flex w-fit items-center gap-2 text-sm text-neutral-400 transition-colors duration-200 hover:text-white"
-    >
+    <Link to="/dashboard" className="inline-flex w-fit items-center gap-2 text-sm text-neutral-400 transition-colors duration-200 hover:text-white">
       <ArrowLeft className="h-4 w-4" aria-hidden="true" />
       Back to my jobs
     </Link>
-  );
-}
-
-function Detail({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <dt className="text-xs uppercase tracking-wider text-neutral-500">{label}</dt>
-      <dd className="break-words text-neutral-100">{value || '-'}</dd>
-    </div>
   );
 }

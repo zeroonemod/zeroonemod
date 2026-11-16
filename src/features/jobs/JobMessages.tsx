@@ -1,9 +1,11 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Loader2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { formatDateTime } from '@/features/jobs/jobFormat';
-import type { JobMessageRow } from '@/features/jobs/jobTypes';
+import { controlClass } from '@/components/ui/FormField';
+import { notify } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import { formatDateTime } from '@/features/jobs/jobFormat';
+import { MESSAGE_COLUMNS, type JobMessageRow } from '@/features/jobs/jobTypes';
 
 export interface MessageTemplate {
   id: string;
@@ -17,8 +19,7 @@ interface JobMessagesProps {
   templates?: MessageTemplate[];
 }
 
-const MESSAGE_COLUMNS = 'id, job_id, sender_role, body, customer_read_at, admin_read_at, created_at';
-
+/** Conversation between the customer and ZEROONEMOD on one job. The other side gets an email for each new message. */
 export function JobMessages({ jobId, viewer, templates = [] }: JobMessagesProps) {
   const [messages, setMessages] = useState<JobMessageRow[] | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -26,9 +27,14 @@ export function JobMessages({ jobId, viewer, templates = [] }: JobMessagesProps)
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const listRef = useRef<HTMLUListElement>(null);
+  const inputId = `job-message-${viewer}`;
 
   useEffect(() => {
     let active = true;
+    const readField = viewer === 'customer' ? 'customer_read_at' : 'admin_read_at';
+    const unreadFrom = viewer === 'customer' ? 'admin' : 'customer';
+
     supabase
       .from('job_messages')
       .select(MESSAGE_COLUMNS)
@@ -41,11 +47,9 @@ export function JobMessages({ jobId, viewer, templates = [] }: JobMessagesProps)
           return;
         }
         setLoadError(false);
-        setMessages(data as JobMessageRow[]);
-        const readField = viewer === 'customer' ? 'customer_read_at' : 'admin_read_at';
-        const unreadFrom = viewer === 'customer' ? 'admin' : 'customer';
-        const hasUnread = data.some((m) => m.sender_role === unreadFrom && !(m as JobMessageRow)[readField]);
-        if (hasUnread) {
+        const rows = data as JobMessageRow[];
+        setMessages(rows);
+        if (rows.some((m) => m.sender_role === unreadFrom && !m[readField])) {
           void supabase
             .from('job_messages')
             .update({ [readField]: new Date().toISOString() })
@@ -59,6 +63,10 @@ export function JobMessages({ jobId, viewer, templates = [] }: JobMessagesProps)
     };
   }, [jobId, viewer, reloadKey]);
 
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
+  }, [messages]);
+
   const handleSend = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const body = draft.trim();
@@ -71,6 +79,7 @@ export function JobMessages({ jobId, viewer, templates = [] }: JobMessagesProps)
       setSendError('Your message could not be sent. Please try again.');
       return;
     }
+    notify(jobId, viewer === 'admin' ? 'admin_message' : 'customer_message');
     setDraft('');
     setReloadKey((key) => key + 1);
   };
@@ -86,7 +95,7 @@ export function JobMessages({ jobId, viewer, templates = [] }: JobMessagesProps)
       {messages && messages.length === 0 && <p className="text-sm text-neutral-400">No messages yet.</p>}
 
       {messages && messages.length > 0 && (
-        <ul className="flex max-h-[420px] flex-col gap-3 overflow-y-auto pr-1">
+        <ul ref={listRef} className="flex max-h-[420px] flex-col gap-3 overflow-y-auto pr-1" aria-live="polite">
           {messages.map((message) => {
             const isOwn = message.sender_role === viewer;
             return (
@@ -109,29 +118,29 @@ export function JobMessages({ jobId, viewer, templates = [] }: JobMessagesProps)
 
       <form onSubmit={handleSend} className="flex flex-col gap-3 border-t border-white/[0.08] pt-5">
         {templates.length > 0 && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" aria-label="Reply templates">
             {templates.map((template) => (
               <button
                 key={template.id}
                 type="button"
                 onClick={() => setDraft(template.body)}
-                className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-neutral-300 transition-colors duration-200 hover:border-white/40 hover:text-white"
+                className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-neutral-300 transition-colors duration-200 hover:border-brand-500/60 hover:text-white"
               >
                 {template.title}
               </button>
             ))}
           </div>
         )}
-        <label htmlFor="job-message" className="text-sm font-medium text-neutral-200">
+        <label htmlFor={inputId} className="text-sm font-medium text-neutral-200">
           Write a message
         </label>
         <textarea
-          id="job-message"
+          id={inputId}
           value={draft}
           maxLength={5000}
           onChange={(event) => setDraft(event.target.value)}
           rows={3}
-          className="w-full resize-y rounded-lg border border-white/10 bg-surface-sunken px-3.5 py-3 text-sm leading-relaxed text-white placeholder:text-neutral-500 transition-colors focus:border-white/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          className={`${controlClass()} resize-y py-3 leading-relaxed`}
         />
         {sendError && (
           <p role="alert" className="text-sm text-red-400">

@@ -1,31 +1,35 @@
 import { useState } from 'react';
 import { Download, Loader2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Dropzone } from '@/components/ui/Dropzone';
+import { UploadDropzone } from '@/components/ui/UploadDropzone';
 import { formatFileSize } from '@/lib/uploadLimits';
 import { JOB_FILES_BUCKET, toStorageFileName } from '@/lib/storagePaths';
 import { supabase } from '@/lib/supabase';
+import { formatDate } from '@/features/jobs/jobFormat';
 import type { JobFileRow } from '@/features/jobs/jobTypes';
 
+/** Download links are short-lived: they are created on click and expire after five minutes. */
 const SIGNED_URL_SECONDS = 300;
 
-export async function openSignedFile(path: string): Promise<void> {
-  const { data, error } = await supabase.storage.from(JOB_FILES_BUCKET).createSignedUrl(path, SIGNED_URL_SECONDS);
+export async function openSignedFile(file: Pick<JobFileRow, 'storage_path' | 'file_name'>): Promise<void> {
+  const { data, error } = await supabase.storage
+    .from(JOB_FILES_BUCKET)
+    .createSignedUrl(file.storage_path, SIGNED_URL_SECONDS, { download: file.file_name });
   if (error || !data?.signedUrl) throw new Error('Could not open this file. Please try again.');
-  window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+  window.location.assign(data.signedUrl);
 }
 
-export function FileDownloadList({ files, emptyText }: { files: JobFileRow[]; emptyText: string }) {
+export function FileDownloadList({ files, emptyText, showDate = false }: { files: JobFileRow[]; emptyText: string; showDate?: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  if (files.length === 0) return <p className="text-sm text-neutral-400">{emptyText}</p>;
+  if (files.length === 0) return emptyText ? <p className="text-sm text-neutral-400">{emptyText}</p> : null;
 
   const handleOpen = async (file: JobFileRow) => {
     setError(null);
     setBusyId(file.id);
     try {
-      await openSignedFile(file.storage_path);
+      await openSignedFile(file);
     } catch (openError) {
       setError(openError instanceof Error ? openError.message : 'Could not open this file.');
     } finally {
@@ -39,10 +43,15 @@ export function FileDownloadList({ files, emptyText }: { files: JobFileRow[]; em
         {files.map((file) => (
           <li key={file.id} className="flex items-center justify-between gap-4 py-3">
             <div className="min-w-0">
-              <p className="truncate text-sm text-white">{file.file_name}</p>
-              <p className="text-xs text-neutral-400">{formatFileSize(file.size_bytes)}</p>
+              <p className="truncate text-sm text-white" title={file.file_name}>
+                {file.file_name}
+              </p>
+              <p className="text-xs text-neutral-400">
+                {formatFileSize(file.size_bytes)}
+                {showDate && ` · ${formatDate(file.created_at)}`}
+              </p>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => handleOpen(file)} disabled={busyId === file.id}>
+            <Button variant="secondary" size="sm" onClick={() => handleOpen(file)} disabled={busyId === file.id} aria-label={`Download ${file.file_name}`}>
               {busyId === file.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Download className="h-3.5 w-3.5" aria-hidden="true" />}
               Download
             </Button>
@@ -64,7 +73,7 @@ interface FileUploaderProps {
   kind: 'additional' | 'completed';
   title: string;
   description: string;
-  onUploaded: () => void;
+  onUploaded: (count: number) => void;
 }
 
 export function FileUploader({ jobId, reference, kind, title, description, onUploaded }: FileUploaderProps) {
@@ -72,17 +81,16 @@ export function FileUploader({ jobId, reference, kind, title, description, onUpl
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const folder = kind === 'completed' ? 'completed' : 'additional';
-
   const handleUpload = async () => {
     if (queued.length === 0) return;
     setBusy(true);
     setError(null);
     const failed: string[] = [];
+    let uploaded = 0;
 
     for (const file of queued) {
-      const stamp = Date.now().toString(36);
-      const storagePath = `${reference}/${folder}/${stamp}-${toStorageFileName(file.name)}`;
+      const stamp = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+      const storagePath = `${reference}/${kind}/${stamp}-${toStorageFileName(file.name)}`;
       const { error: uploadError } = await supabase.storage
         .from(JOB_FILES_BUCKET)
         .upload(storagePath, file, { contentType: file.type || 'application/octet-stream', upsert: false });
@@ -99,21 +107,23 @@ export function FileUploader({ jobId, reference, kind, title, description, onUpl
         mime_type: file.type || null,
       });
       if (rowError) failed.push(file.name);
+      else uploaded += 1;
     }
 
     setBusy(false);
     setQueued([]);
     if (failed.length > 0) setError(`Could not upload: ${failed.join(', ')}. Please try again.`);
-    onUploaded();
+    if (uploaded > 0) onUploaded(uploaded);
   };
 
   return (
     <div className="flex flex-col gap-5">
-      <Dropzone
+      <UploadDropzone
         onFilesSelected={(files) => setQueued((current) => [...current, ...files])}
         title={title}
         description={description}
         error={error ?? undefined}
+        compact
       />
       {queued.length > 0 && (
         <div className="flex flex-col gap-3">
@@ -125,10 +135,15 @@ export function FileUploader({ jobId, reference, kind, title, description, onUpl
               </li>
             ))}
           </ul>
-          <Button onClick={handleUpload} disabled={busy} className="w-full sm:w-auto sm:self-end">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Upload className="h-4 w-4" aria-hidden="true" />}
-            {busy ? 'Uploading' : 'Upload files'}
-          </Button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <Button variant="ghost" onClick={() => setQueued([])} disabled={busy}>
+              Clear
+            </Button>
+            <Button onClick={handleUpload} disabled={busy}>
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Upload className="h-4 w-4" aria-hidden="true" />}
+              {busy ? 'Uploading' : `Upload ${queued.length === 1 ? 'file' : `${queued.length} files`}`}
+            </Button>
+          </div>
         </div>
       )}
     </div>

@@ -49,7 +49,8 @@ export function TcuServicesPage() {
     >
       <ServiceGrid services={SERVICES} />
       <NoticeCard>
-        Transmission support depends on the gearbox type, its control unit and software version. Not every
+        Transmission support depends on the gearbox type, its control unit and software version. Compatibility and
+        availability depend on the TCU, the vehicle and the original file. Not every
         transmission can be modified safely. We confirm compatibility after reviewing your file, and you remain
         responsible for checking local regulations before using any modified file.
       </NoticeCard>

@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search } from 'lucide-react';
-import { StatusBadge } from '@/features/jobs/JobStatusViews';
-import { formatDate } from '@/features/jobs/jobFormat';
-import { JOB_COLUMNS, JOB_STATUSES, SERVICE_LABELS, type JobRow, type JobStatus } from '@/features/jobs/jobTypes';
-import { supabase } from '@/lib/supabase';
 import { LoadingState } from '@/components/ui/LoadingState';
-import { SelectInput, TextInput } from '@/components/ui/FormControls';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { SelectInput } from '@/components/ui/Select';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { supabase } from '@/lib/supabase';
+import { formatDate } from '@/features/jobs/jobFormat';
+import { JOB_COLUMNS, JOB_STATUSES, SERVICE_LABELS, vehicleLabel, type JobRow, type JobStatus } from '@/features/jobs/jobTypes';
+
+const STATUS_OPTIONS = [{ value: 'all', label: 'All statuses' }, ...JOB_STATUSES.map((status) => ({ value: status, label: status }))];
 
 export function CustomerJobList() {
   const [jobs, setJobs] = useState<JobRow[] | null>(null);
@@ -26,7 +28,6 @@ export function CustomerJobList() {
           setLoadError(true);
           return;
         }
-        setLoadError(false);
         setJobs(data as unknown as JobRow[]);
       });
     return () => {
@@ -40,8 +41,9 @@ export function CustomerJobList() {
     return jobs.filter((job) => {
       if (statusFilter !== 'all' && job.status !== statusFilter) return false;
       if (!needle) return true;
-      return [job.reference, job.vehicle_make, job.vehicle_model, String(job.vehicle_year)]
-        .some((value) => value.toLowerCase().includes(needle));
+      return [job.reference, job.vehicle_make, job.vehicle_model, String(job.vehicle_year), job.vehicle_vin].some((value) =>
+        value.toLowerCase().includes(needle),
+      );
     });
   }, [jobs, query, statusFilter]);
 
@@ -58,23 +60,19 @@ export function CustomerJobList() {
   return (
     <div className="flex flex-col gap-6">
       <div className="grid gap-4 md:grid-cols-[1fr_260px]">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-4 top-[50px] h-4 w-4 -translate-y-1/2 text-neutral-500" aria-hidden="true" />
-          <TextInput
-            id="job-search"
-            label="Search jobs"
-            placeholder="Reference, make or model"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            className="pl-11"
-          />
-        </div>
+        <SearchInput
+          id="job-search"
+          label="Search jobs"
+          placeholder="Reference, make, model or VIN"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
         <SelectInput
           id="job-status-filter"
           label="Status"
           value={statusFilter}
           onChange={(event) => setStatusFilter(event.target.value as 'all' | JobStatus)}
-          options={[{ value: 'all', label: 'All statuses' }, ...JOB_STATUSES.map((status) => ({ value: status, label: status }))]}
+          options={STATUS_OPTIONS}
         />
       </div>
 
@@ -85,9 +83,7 @@ export function CustomerJobList() {
         </div>
       )}
 
-      {jobs.length > 0 && visibleJobs.length === 0 && (
-        <p className="text-sm text-neutral-400">No jobs match your search.</p>
-      )}
+      {jobs.length > 0 && visibleJobs.length === 0 && <p className="text-sm text-neutral-400">No jobs match your search.</p>}
 
       {visibleJobs.length > 0 && (
         <ul className="flex flex-col gap-3">
@@ -95,13 +91,11 @@ export function CustomerJobList() {
             <li key={job.id}>
               <Link
                 to={`/dashboard/jobs/${job.reference}`}
-                className="group flex flex-col gap-4 rounded-xl border border-white/[0.08] bg-surface p-5 transition-colors duration-200 hover:border-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:flex-row sm:items-center sm:justify-between sm:p-6"
+                className="group flex flex-col gap-4 rounded-xl border border-white/[0.08] bg-surface p-5 transition-colors duration-200 hover:border-brand-500/50 sm:flex-row sm:items-center sm:justify-between sm:p-6"
               >
-                <div className="flex flex-col gap-1.5">
+                <div className="flex min-w-0 flex-col gap-1.5">
                   <span className="text-sm font-semibold tracking-wide text-white">{job.reference}</span>
-                  <span className="text-sm text-neutral-300">
-                    {job.vehicle_year} {job.vehicle_make} {job.vehicle_model}
-                  </span>
+                  <span className="text-sm text-neutral-300">{vehicleLabel(job)}</span>
                   <span className="text-xs text-neutral-500">
                     {job.file_type} · {SERVICE_LABELS[job.requested_service] ?? job.requested_service} · Submitted {formatDate(job.created_at)}
                   </span>

@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.payment-webhook]
 verify_jwt = false
+
+[functions.submit-guest]
+verify_jwt = false

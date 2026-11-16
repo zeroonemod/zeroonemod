@@ -1,6 +1,7 @@
 // Admin-only account management that needs the service role:
-// invite or create partner accounts, enable or disable accounts, and process GDPR deletion.
-import { EMAIL, json, optionalText, preflight, readJson, siteUrl, text } from '../_shared/http.ts';
+// invite or create partner accounts, enable or disable accounts, convert guest requests
+// into customer jobs (optionally with an account), and process GDPR deletion.
+import { EMAIL, json, oneOf, optionalText, preflight, readJson, siteUrl, text } from '../_shared/http.ts';
 import { adminClient, type AdminClient, getCaller } from '../_shared/supabase.ts';
 
 const BUCKET = 'job-files';
@@ -24,6 +25,8 @@ Deno.serve(async (req) => {
         return json(req, await invitePartner(admin, body));
       case 'set_active':
         return json(req, await setActive(admin, body, caller.user.id));
+      case 'convert_guest':
+        return json(req, await convertGuest(admin, body, caller.user.id));
       case 'delete_customer_data':
         return json(req, await deleteCustomerData(admin, body, caller.user.id));
       default:
@@ -135,4 +138,99 @@ async function deleteCustomerData(admin: AdminClient, body: Record<string, unkno
     await admin.from('data_deletion_requests').update({ status: 'completed', processed_at: new Date().toISOString() }).eq('id', requestId);
   }
   return { ok: true, jobs: jobIds.length };
+}
+
+const VIN = /^[A-HJ-NPR-Z0-9]{17}$/;
+const SERVICES = ['stage1_calibration', 'original_restoration', 'decoding', 'other_modification', 'not_sure'] as const;
+const FUEL_TYPES = ['Petrol', 'Diesel', 'Hybrid', 'Other'] as const;
+
+/**
+ * Turns a guest request into a normal customer job with the details the admin collected.
+ * With createAccount, the job is linked to the existing account for that email or a new
+ * account is invited, so the customer can follow the job from the dashboard.
+ */
+async function convertGuest(admin: AdminClient, body: Record<string, unknown>, callerId: string) {
+  const jobId = typeof body.jobId === 'string' && UUID.test(body.jobId) ? body.jobId : null;
+  const d = (body.details ?? {}) as Record<string, unknown>;
+  const email = (text(d.email, 254) ?? '').toLowerCase();
+  const firstName = text(d.firstName, 80);
+  const lastName = text(d.lastName, 80);
+  const country = text(d.country, 80);
+  const customerType = oneOf(d.customerType, ['individual', 'workshop'] as const);
+  const companyName = optionalText(d.companyName, 120);
+  const phone = optionalText(d.phone, 30);
+  const fileType = oneOf(d.fileType, ['ECU', 'TCU'] as const);
+  const service = oneOf(d.requestedService, SERVICES);
+  const make = text(d.make, 60);
+  const model = text(d.model, 60);
+  const year = Number(d.year);
+  const engine = text(d.engine, 80);
+  const fuel = oneOf(d.fuelType, FUEL_TYPES);
+  const vin = typeof d.vin === 'string' ? d.vin.trim().toUpperCase() : '';
+  const manufacturer = optionalText(d.manufacturer, 80);
+  const hardware = optionalText(d.hardwareNumber, 80);
+  const software = optionalText(d.softwareNumber, 80);
+  const createAccount = body.createAccount === true;
+
+  if (
+    !jobId || !EMAIL.test(email) || !firstName || !lastName || !country || !customerType || !fileType || !service ||
+    !make || !model || !engine || !fuel || !VIN.test(vin) || !Number.isInteger(year) || year < 1950 || year > new Date().getFullYear() + 1 ||
+    companyName === undefined || phone === undefined || manufacturer === undefined || hardware === undefined || software === undefined ||
+    (customerType === 'workshop' && !companyName)
+  ) {
+    throw new Error('Some details are missing or invalid.');
+  }
+
+  const { data: job } = await admin.from('jobs').select('id, reference, job_type').eq('id', jobId).maybeSingle();
+  if (!job) throw new Error('Job not found.');
+  if (job.job_type !== 'guest') throw new Error('This job is not a guest request.');
+
+  const { error: updateError } = await admin
+    .from('jobs')
+    .update({
+      job_type: 'customer',
+      customer_type: customerType,
+      customer_first_name: firstName,
+      customer_last_name: lastName,
+      customer_email: email,
+      customer_phone: phone,
+      customer_country: country,
+      company_name: customerType === 'workshop' ? companyName : null,
+      file_type: fileType,
+      requested_service: service,
+      vehicle_make: make,
+      vehicle_model: model,
+      vehicle_year: year,
+      vehicle_engine: engine,
+      vehicle_fuel_type: fuel,
+      vehicle_vin: vin,
+      ecu_manufacturer: manufacturer,
+      ecu_hardware_number: hardware,
+      ecu_software_number: software,
+    })
+    .eq('id', jobId);
+  if (updateError) throw updateError;
+
+  let account: 'none' | 'linked' | 'invited' = 'none';
+  if (createAccount) {
+    const details = { full_name: `${firstName} ${lastName}`, company_name: customerType === 'workshop' ? companyName : null, customer_type: customerType, country, phone };
+    const { data: existing } = await admin.from('profiles').select('id').eq('email', email).maybeSingle();
+    let userId = existing?.id as string | undefined;
+    if (userId) {
+      account = 'linked';
+    } else {
+      const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
+        redirectTo: `${siteUrl()}/dashboard/jobs/${job.reference}`,
+        data: { full_name: details.full_name },
+      });
+      if (error || !data.user) throw new Error(error?.message ?? 'The account invitation could not be sent.');
+      userId = data.user.id;
+      account = 'invited';
+      await admin.from('profiles').upsert({ id: userId, email, ...details });
+    }
+    await admin.from('jobs').update({ user_id: userId }).eq('id', jobId);
+  }
+
+  await admin.from('job_events').insert({ job_id: jobId, actor_id: callerId, action: 'converted_from_guest', details: { account } });
+  return { ok: true, account };
 }

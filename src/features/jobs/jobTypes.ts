@@ -30,10 +30,15 @@ export type PaymentMethod = (typeof PAYMENT_METHODS)[number]['value'];
 
 export const PAYMENT_METHOD_LABELS: Record<string, string> = Object.fromEntries(PAYMENT_METHODS.map((m) => [m.value, m.label]));
 
+/** 'guest' = guest request (contact details and files only). Converted guest requests become 'customer'. */
+export type JobType = 'customer' | 'guest';
+
+// Vehicle, service and name fields are always set on customer jobs and empty on guest requests.
 export interface JobRow {
   id: string;
   reference: string;
   user_id: string | null;
+  job_type: JobType;
   status: JobStatus;
   file_type: 'ECU' | 'TCU';
   requested_service: string;
@@ -70,7 +75,7 @@ export interface JobRow {
 }
 
 export const JOB_COLUMNS =
-  'id, reference, user_id, status, file_type, requested_service, service_comments, customer_type, customer_first_name, customer_last_name, customer_email, customer_country, customer_phone, company_name, vehicle_make, vehicle_model, vehicle_year, vehicle_engine, vehicle_fuel_type, vehicle_vin, ecu_manufacturer, ecu_hardware_number, ecu_software_number, ecu_identification_numbers, quote_amount, quote_currency, quote_notes, quoted_at, payment_link, payment_status, payment_method, paid_at, delivered_at, files_deleted_at, created_at, updated_at';
+  'id, reference, user_id, job_type, status, file_type, requested_service, service_comments, customer_type, customer_first_name, customer_last_name, customer_email, customer_country, customer_phone, company_name, vehicle_make, vehicle_model, vehicle_year, vehicle_engine, vehicle_fuel_type, vehicle_vin, ecu_manufacturer, ecu_hardware_number, ecu_software_number, ecu_identification_numbers, quote_amount, quote_currency, quote_notes, quoted_at, payment_link, payment_status, payment_method, paid_at, delivered_at, files_deleted_at, created_at, updated_at';
 
 export interface JobFileRow {
   id: string;
@@ -118,9 +123,20 @@ export interface PaymentRow {
 export const PAYMENT_COLUMNS = 'id, job_id, amount, currency, method, status, reference_note, paid_at, created_at';
 
 export function vehicleLabel(job: Pick<JobRow, 'vehicle_year' | 'vehicle_make' | 'vehicle_model'>): string {
+  if (!job.vehicle_make) return '-';
   return `${job.vehicle_year} ${job.vehicle_make} ${job.vehicle_model}`;
 }
 
 export function customerName(job: Pick<JobRow, 'customer_first_name' | 'customer_last_name'>): string {
+  if (!job.customer_first_name) return 'Guest';
   return `${job.customer_first_name} ${job.customer_last_name}`;
+}
+
+export function isGuest(job: Pick<JobRow, 'job_type'>): boolean {
+  return job.job_type === 'guest';
+}
+
+/** Email and/or phone, for lists. */
+export function contactLabel(job: Pick<JobRow, 'customer_email' | 'customer_phone'>): string {
+  return [job.customer_email, job.customer_phone].filter(Boolean).join(' · ') || '-';
 }

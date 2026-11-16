@@ -5,12 +5,14 @@ import { LoadingState } from '@/components/ui/LoadingState';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { supabase } from '@/lib/supabase';
 import { Panel, useAdminSettings } from '@/features/admin/adminShared';
+import { GuestRequestDetail } from '@/features/admin/adminGuest';
 import { ActivityPanel, DeliveryPanel, FilesPanel, NotesPanel, PaymentPanel, QuotationPanel, StatusPanel } from '@/features/admin/adminJobPanels';
 import { Detail, DetailGrid, JobVehicleDetails } from '@/features/jobs/JobInfo';
 import { JobMessages } from '@/features/jobs/JobMessages';
 import {
   customerName,
   FILE_COLUMNS,
+  isGuest,
   JOB_COLUMNS,
   PAYMENT_COLUMNS,
   SERVICE_LABELS,
@@ -84,6 +86,7 @@ export function AdminJobDetail() {
 
   const { job, files, payments, notes, events } = bundle;
   const onChanged = () => void refresh();
+  if (isGuest(job)) return <GuestRequestDetail job={job} files={files} notes={notes} events={events} onChanged={onChanged} />;
   // Remount stateful panels when the job changes so their fields show the saved values.
   const version = job.updated_at;
 
@@ -142,7 +145,11 @@ export function AdminJobDetail() {
           <FilesPanel job={job} files={files} onChanged={onChanged} />
 
           <Panel title="Messages" id="messages">
-            <JobMessages jobId={job.id} viewer="admin" templates={settings?.templates ?? []} />
+            {job.user_id ? (
+              <JobMessages jobId={job.id} viewer="admin" templates={settings?.templates ?? []} />
+            ) : (
+              <p className="text-sm text-neutral-400">This customer has no account, so they cannot read messages here. Contact them by email or phone.</p>
+            )}
           </Panel>
         </div>
 

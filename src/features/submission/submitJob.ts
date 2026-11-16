@@ -57,11 +57,12 @@ function buildPayload(form: WizardForm, draftId: string, files: UploadedFile[]) 
   };
 }
 
-/** Uploads the files into a private pending folder, then asks the server to create the job. */
-export async function submitJob(form: WizardForm, files: File[], onProgress?: (done: number, total: number) => void): Promise<SubmitResult> {
+type Progress = (done: number, total: number) => void;
+
+/** Uploads the files into a private pending folder. The server moves them into the job folder. */
+async function uploadToPending(files: File[], onProgress?: Progress): Promise<{ draftId: string; uploaded: UploadedFile[] }> {
   const draftId = crypto.randomUUID();
   const uploaded: UploadedFile[] = [];
-
   for (const [index, file] of files.entries()) {
     onProgress?.(index, files.length);
     const storageName = safeStorageName(index, file.name);
@@ -72,6 +73,38 @@ export async function submitJob(form: WizardForm, files: File[], onProgress?: (d
     uploaded.push({ storageName, originalName: file.name, sizeBytes: file.size, mimeType: file.type || 'application/octet-stream' });
   }
   onProgress?.(files.length, files.length);
+  return { draftId, uploaded };
+}
+
+export interface GuestDetails {
+  email: string;
+  phone: string;
+  notes: string;
+  privacyConsent: boolean;
+  website: string;
+}
+
+/** Guest request: no account, only contact details and files. Returns the job reference. */
+export async function submitGuest(details: GuestDetails, files: File[], onProgress?: Progress): Promise<string> {
+  const { draftId, uploaded } = await uploadToPending(files, onProgress);
+  const result = await callFunction<{ reference?: string }>('submit-guest', {
+    draftId,
+    files: uploaded,
+    email: details.email.trim(),
+    phone: details.phone.trim(),
+    notes: details.notes.trim(),
+    privacyConsent: details.privacyConsent,
+    website: details.website,
+  });
+  if (!result || typeof result.reference !== 'string') {
+    throw new Error('We could not send your file. Please try again.');
+  }
+  return result.reference;
+}
+
+/** Uploads the files into a private pending folder, then asks the server to create the job. */
+export async function submitJob(form: WizardForm, files: File[], onProgress?: Progress): Promise<SubmitResult> {
+  const { draftId, uploaded } = await uploadToPending(files, onProgress);
 
   const result = await callFunction<Partial<SubmitResult>>('submit-job', buildPayload(form, draftId, uploaded));
   if (!result || typeof result.reference !== 'string' || typeof result.accountStatus !== 'string') {

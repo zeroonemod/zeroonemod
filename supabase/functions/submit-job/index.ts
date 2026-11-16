@@ -3,9 +3,8 @@
 import { clientIp, EMAIL, json, oneOf, optionalText, preflight, readJson, siteUrl, text } from '../_shared/http.ts';
 import { adminClient, type AdminClient, getCaller, isRateLimited, logEvent, notificationEmail } from '../_shared/supabase.ts';
 import { adminJobUrl, jobUrl, sendEmail } from '../_shared/email.ts';
+import { attachOriginals, DRAFT_ID, parseFiles, pendingFilesPresent } from '../_shared/files.ts';
 
-const BUCKET = 'job-files';
-const MAX_FILES = 20;
 const FILE_TYPES = ['ECU', 'TCU'] as const;
 const SERVICES = ['stage1_calibration', 'original_restoration', 'decoding', 'other_modification', 'not_sure'] as const;
 const SERVICE_LABELS: Record<string, string> = {
@@ -17,38 +16,10 @@ const SERVICE_LABELS: Record<string, string> = {
 };
 const CUSTOMER_TYPES = ['individual', 'workshop'] as const;
 const FUEL_TYPES = ['Petrol', 'Diesel', 'Hybrid', 'Other'] as const;
-const STORAGE_NAME = /^[A-Za-z0-9._-]{1,120}$/;
 const VIN = /^[A-HJ-NPR-Z0-9]{17}$/;
-const DRAFT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const INVALID = 'Some details are missing or invalid. Please check the form and try again.';
 
 type AccountStatus = 'signed_in' | 'created' | 'invited' | 'exists' | 'unavailable';
-
-interface UploadedFile {
-  storageName: string;
-  originalName: string;
-  sizeBytes: number;
-  mimeType: string;
-}
-
-function parseFiles(value: unknown): UploadedFile[] | null {
-  if (!Array.isArray(value) || value.length < 1 || value.length > MAX_FILES) return null;
-  const files: UploadedFile[] = [];
-  for (const item of value) {
-    if (typeof item !== 'object' || item === null) return null;
-    const record = item as Record<string, unknown>;
-    const originalName = text(record.originalName, 200);
-    if (typeof record.storageName !== 'string' || !STORAGE_NAME.test(record.storageName)) return null;
-    if (!originalName || typeof record.sizeBytes !== 'number' || record.sizeBytes < 0) return null;
-    files.push({
-      storageName: record.storageName,
-      originalName,
-      sizeBytes: Math.round(record.sizeBytes),
-      mimeType: typeof record.mimeType === 'string' && record.mimeType ? record.mimeType.slice(0, 120) : 'application/octet-stream',
-    });
-  }
-  return new Set(files.map((f) => f.storageName)).size === files.length ? files : null;
-}
 
 Deno.serve(async (req) => {
   const early = preflight(req);
@@ -113,10 +84,7 @@ Deno.serve(async (req) => {
       (password !== null && (password.length < 8 || password.length > 72));
     if (invalid) return json(req, { error: INVALID }, 400);
 
-    const { data: pendingList, error: listError } = await admin.storage.from(BUCKET).list(`pending/${draftId}`, { limit: 100 });
-    if (listError) throw listError;
-    const received = new Set((pendingList ?? []).map((item) => item.name));
-    if (!files.every((file) => received.has(file.storageName))) {
+    if (!(await pendingFilesPresent(admin, draftId, files))) {
       return json(req, { error: 'Some files did not finish uploading. Please upload them again.' }, 400);
     }
 
@@ -150,24 +118,7 @@ Deno.serve(async (req) => {
       .single();
     if (jobError) throw jobError;
 
-    for (const file of files) {
-      const { error: moveError } = await admin.storage
-        .from(BUCKET)
-        .move(`pending/${draftId}/${file.storageName}`, `${job.reference}/original/${file.storageName}`);
-      if (moveError) throw moveError;
-    }
-
-    const { error: filesError } = await admin.from('job_files').insert(
-      files.map((file) => ({
-        job_id: job.id,
-        kind: 'original',
-        file_name: file.originalName,
-        storage_path: `${job.reference}/original/${file.storageName}`,
-        size_bytes: file.sizeBytes,
-        mime_type: file.mimeType,
-      })),
-    );
-    if (filesError) throw filesError;
+    await attachOriginals(admin, job.id, job.reference, draftId, files);
 
     const profileDetails = {
       full_name: `${firstName} ${lastName}`,

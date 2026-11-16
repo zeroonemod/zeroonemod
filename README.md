@@ -18,13 +18,13 @@ src/
   features/jobs        Shared job types, files, messages
 supabase/
   migrations/          Fresh database schema (tables, security policies, storage, admin functions)
-  functions/           submit-job, submit-request, notify, admin-users, retention-cleanup, payment-webhook
+  functions/           submit-job, submit-guest, submit-request, notify, admin-users, retention-cleanup, payment-webhook
 ```
 
 ## 1. Supabase
 
 1. Create a new Supabase project (region: EU).
-2. Apply the schema. Either paste `supabase/migrations/20261116100000_initial_schema.sql` into the SQL editor and run it, or with the CLI:
+2. Apply the schema. Either paste the files in `supabase/migrations/` into the SQL editor and run them in order, or with the CLI:
    ```bash
    npx supabase login
    npx supabase link --project-ref YOUR_PROJECT_REF
@@ -32,7 +32,7 @@ supabase/
    ```
 3. Deploy the functions:
    ```bash
-   npx supabase functions deploy submit-job submit-request notify admin-users retention-cleanup payment-webhook
+   npx supabase functions deploy submit-job submit-guest submit-request notify admin-users retention-cleanup payment-webhook
    ```
 4. Set function secrets (Project Settings > Edge Functions > Secrets, or `npx supabase secrets set KEY=value`):
    - `SITE_URL=https://zeroonemod.com`

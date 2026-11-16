@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react';
-import { CheckCircle2, Circle, Loader2, Send, Trash2, Truck } from 'lucide-react';
+import { CheckCircle2, Circle, Link2, Loader2, Mail, Send, Trash2, Truck } from 'lucide-react';
 import { NoticeLine, type Notice } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { TextArea, TextInput } from '@/components/ui/FormField';
 import { SelectInput } from '@/components/ui/Select';
-import { errorMessage, notify } from '@/lib/api';
+import { callFunction, errorMessage, notify } from '@/lib/api';
 import { JOB_FILES_BUCKET } from '@/lib/storagePaths';
 import { supabase } from '@/lib/supabase';
 import { confirmAction, Panel } from '@/features/admin/adminShared';
@@ -328,7 +328,75 @@ export function DeliveryPanel({ job, completed, onChanged }: PanelProps & { comp
           </Button>
         </div>
       )}
+      {!job.user_id && <SecureLinkActions job={job} completed={completed} ready={paid && hasFile} />}
     </Panel>
+  );
+}
+
+const SECURE_LINK_DAYS = 7;
+
+/** Customers without an account cannot download from a dashboard: send or copy a time-limited link instead. */
+function SecureLinkActions({ job, completed, ready }: { job: JobRow; completed: JobFileRow[]; ready: boolean }) {
+  const [busy, setBusy] = useState<'email' | 'copy' | null>(null);
+  const [notice, setNotice] = useState<Notice>(null);
+  const email = job.customer_email as string | null;
+
+  const sendEmail = async () => {
+    setBusy('email');
+    setNotice(null);
+    try {
+      const result = await callFunction<{ sent: boolean }>('notify', { jobId: job.id, event: 'download_link' });
+      setNotice(
+        result.sent
+          ? { tone: 'success', text: `Secure download link emailed to ${email}. It is valid for ${SECURE_LINK_DAYS} days.` }
+          : { tone: 'error', text: 'The email was not sent (email sending is not set up yet). Copy the link instead.' },
+      );
+    } catch (error) {
+      setNotice({ tone: 'error', text: errorMessage(error) });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const copyLink = async () => {
+    setBusy('copy');
+    setNotice(null);
+    try {
+      const links: string[] = [];
+      for (const file of completed) {
+        const { data, error } = await supabase.storage
+          .from(JOB_FILES_BUCKET)
+          .createSignedUrl(file.storage_path, SECURE_LINK_DAYS * 86_400, { download: file.file_name });
+        if (error || !data) throw new Error('The link could not be created.');
+        links.push(completed.length > 1 ? `${file.file_name}: ${data.signedUrl}` : data.signedUrl);
+      }
+      await navigator.clipboard.writeText(links.join('\n'));
+      setNotice({ tone: 'success', text: `Secure link copied. It is valid for ${SECURE_LINK_DAYS} days.` });
+    } catch (error) {
+      setNotice({ tone: 'error', text: errorMessage(error) });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="mt-6 flex flex-col gap-3 border-t border-white/[0.08] pt-5">
+      <p className="text-sm text-neutral-400">
+        This customer has no account. Send the completed file as a secure link, valid for {SECURE_LINK_DAYS} days.
+      </p>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Button variant="secondary" size="sm" onClick={sendEmail} disabled={!ready || !email || busy !== null}>
+          {busy === 'email' ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Mail className="h-3.5 w-3.5" aria-hidden="true" />}
+          Email secure link
+        </Button>
+        <Button variant="secondary" size="sm" onClick={copyLink} disabled={!ready || busy !== null}>
+          {busy === 'copy' ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Link2 className="h-3.5 w-3.5" aria-hidden="true" />}
+          Copy secure link
+        </Button>
+      </div>
+      {!ready && <p className="text-xs text-neutral-500">Available once the job is paid and a completed file is uploaded.</p>}
+      <NoticeLine notice={notice} />
+    </div>
   );
 }
 
@@ -463,6 +531,10 @@ const EVENT_LABELS: Record<string, (details: Record<string, unknown>) => string>
   file_uploaded: (d) => `File uploaded (${d.kind}): ${d.file}`,
   files_deleted: (d) => `${d.count ?? 'All'} files deleted${d.reason === 'retention' ? ' by retention policy' : ''}`,
   customer_data_deleted: () => 'Customer data deleted (GDPR request)',
+  guest_submitted: (d) => `Guest request received (${d.files ?? '?'} file${d.files === 1 ? '' : 's'})`,
+  converted_from_guest: (d) =>
+    `Converted to customer job${d.account === 'invited' ? ', account invited' : d.account === 'linked' ? ', linked to existing account' : ', no account'}`,
+  download_link_sent: (d) => `Secure download link emailed (valid ${d.days ?? 7} days)`,
 };
 
 export function ActivityPanel({ events }: { events: JobEventRow[] }) {

@@ -7,12 +7,13 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useAdminJobs } from '@/features/admin/useAdminJobs';
 import { AdminPageHeader, EmptyRow } from '@/features/admin/adminShared';
 import { formatDate } from '@/features/jobs/jobFormat';
-import { SERVICE_LABELS, vehicleLabel, type JobRow } from '@/features/jobs/jobTypes';
+import { contactLabel, SERVICE_LABELS, vehicleLabel, type JobRow } from '@/features/jobs/jobTypes';
 import { useMessageThreads } from '@/features/jobs/useMessageThreads';
 
 const WEEK_MS = 7 * 86_400_000;
 
 function actionReason(job: JobRow, unread: number): string | null {
+  if (job.job_type === 'guest' && job.status === 'Submitted') return 'New guest request';
   if (unread > 0) return `${unread} unread customer message${unread === 1 ? '' : 's'}`;
   switch (job.status) {
     case 'Submitted':
@@ -109,8 +110,10 @@ export function AdminDashboard() {
                       {job.reference}
                       {(unreadByJob[job.id] ?? 0) > 0 && <Mail className="h-4 w-4 text-brand-500" aria-label="Unread messages" />}
                     </span>
-                    <span className="text-sm text-neutral-300">
-                      {vehicleLabel(job)} · {SERVICE_LABELS[job.requested_service] ?? job.requested_service}
+                    <span className="break-all text-sm text-neutral-300">
+                      {job.job_type === 'guest'
+                        ? contactLabel(job)
+                        : `${vehicleLabel(job)} · ${SERVICE_LABELS[job.requested_service] ?? job.requested_service}`}
                     </span>
                     <span className="text-xs text-neutral-500">
                       {reason} · {formatDate(job.created_at)}

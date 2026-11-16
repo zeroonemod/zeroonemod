@@ -8,11 +8,13 @@ import { SelectInput } from '@/components/ui/Select';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { downloadCsv } from '@/lib/csv';
 import { supabase } from '@/lib/supabase';
-import { AdminPageHeader, EmptyRow } from '@/features/admin/adminShared';
+import { AdminPageHeader, EmptyRow, GuestBadge } from '@/features/admin/adminShared';
 import { useAdminJobs } from '@/features/admin/useAdminJobs';
 import { formatDate, formatMoney } from '@/features/jobs/jobFormat';
 import {
+  contactLabel,
   customerName,
+  isGuest,
   JOB_STATUSES,
   PAYMENT_COLUMNS,
   PAYMENT_METHOD_LABELS,
@@ -53,18 +55,21 @@ export function exportJobsCsv(jobs: JobRow[]) {
     `zeroonemod-jobs-${new Date().toISOString().slice(0, 10)}.csv`,
     jobs.map((job) => ({
       reference: job.reference,
+      type: isGuest(job) ? 'Guest request' : 'Customer job',
       created_at: job.created_at,
       status: job.status,
-      customer: customerName(job),
-      email: job.customer_email,
+      customer: isGuest(job) ? '' : customerName(job),
+      email: job.customer_email ?? '',
+      phone: job.customer_phone ?? '',
+      notes: isGuest(job) ? job.service_comments ?? '' : '',
       company: job.company_name ?? '',
-      country: job.customer_country,
-      customer_type: job.customer_type,
-      control_unit: job.file_type,
-      service: SERVICE_LABELS[job.requested_service] ?? job.requested_service,
-      vehicle: vehicleLabel(job),
-      engine: job.vehicle_engine,
-      vin: job.vehicle_vin,
+      country: job.customer_country ?? '',
+      customer_type: job.customer_type ?? '',
+      control_unit: job.file_type ?? '',
+      service: job.requested_service ? SERVICE_LABELS[job.requested_service] ?? job.requested_service : '',
+      vehicle: isGuest(job) ? '' : vehicleLabel(job),
+      engine: job.vehicle_engine ?? '',
+      vin: job.vehicle_vin ?? '',
       quote_amount: job.quote_amount ?? '',
       currency: job.quote_currency,
       payment_status: job.payment_status,
@@ -106,6 +111,7 @@ export function AdminJobsPage() {
   const [status, setStatus] = useState('all');
   const [payment, setPayment] = useState('all');
   const [unit, setUnit] = useState('all');
+  const [type, setType] = useState('all');
   const [sort, setSort] = useState<SortKey>('newest');
   const [exportError, setExportError] = useState<string | null>(null);
 
@@ -115,13 +121,14 @@ export function AdminJobsPage() {
       if (status !== 'all' && job.status !== status) return false;
       if (payment !== 'all' && job.payment_status !== payment) return false;
       if (unit !== 'all' && job.file_type !== unit) return false;
+      if (type !== 'all' && job.job_type !== type) return false;
       if (!needle) return true;
-      return [job.reference, customerName(job), job.customer_email, job.company_name ?? '', job.vehicle_make, job.vehicle_model, job.vehicle_vin].some(
-        (value) => value.toLowerCase().includes(needle),
+      return [job.reference, customerName(job), job.customer_email, job.customer_phone, job.company_name, job.vehicle_make, job.vehicle_model, job.vehicle_vin].some(
+        (value) => (value ?? '').toLowerCase().includes(needle),
       );
     });
     return sortJobs(filtered, sort);
-  }, [jobs, query, status, payment, unit, sort]);
+  }, [jobs, query, status, payment, unit, type, sort]);
 
   if (error) return <p role="alert" className="text-sm text-red-400">We could not load the jobs. Please refresh the page.</p>;
   if (!jobs) return <LoadingState label="Loading jobs" />;
@@ -150,12 +157,13 @@ export function AdminJobsPage() {
       />
       {exportError && <p role="alert" className="text-sm text-red-400">{exportError}</p>}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_1fr_1fr]">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr]">
         <div className="sm:col-span-2 xl:col-span-1">
-          <SearchInput id="admin-job-search" label="Search" placeholder="Reference, customer, email, vehicle or VIN" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <SearchInput id="admin-job-search" label="Search" placeholder="Reference, customer, email, phone, vehicle or VIN" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
         <SelectInput id="admin-job-status" label="Status" value={status} onChange={(e) => setStatus(e.target.value)} options={[{ value: 'all', label: 'All statuses' }, ...JOB_STATUSES.map((s) => ({ value: s, label: s }))]} />
         <SelectInput id="admin-job-payment" label="Payment" value={payment} onChange={(e) => setPayment(e.target.value)} options={[{ value: 'all', label: 'All' }, { value: 'paid', label: 'Paid' }, { value: 'not_paid', label: 'Not paid' }]} />
+        <SelectInput id="admin-job-type" label="Type" value={type} onChange={(e) => setType(e.target.value)} options={[{ value: 'all', label: 'All types' }, { value: 'customer', label: 'Customer jobs' }, { value: 'guest', label: 'Guest requests' }]} />
         <SelectInput id="admin-job-unit" label="Control unit" value={unit} onChange={(e) => setUnit(e.target.value)} options={[{ value: 'all', label: 'ECU and TCU' }, { value: 'ECU', label: 'ECU' }, { value: 'TCU', label: 'TCU' }]} />
         <SelectInput id="admin-job-sort" label="Sort" value={sort} onChange={(e) => setSort(e.target.value as SortKey)} options={SORTS} />
       </div>
@@ -186,15 +194,20 @@ export function AdminJobsPage() {
                       <Link to={`/admin/jobs/${job.reference}`} onClick={(e) => e.stopPropagation()} className="hover:text-brand-400">
                         {job.reference}
                       </Link>
+                      {isGuest(job) && (
+                        <span className="mt-1 block">
+                          <GuestBadge />
+                        </span>
+                      )}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-neutral-400">{formatDate(job.created_at)}</td>
                     <td className="px-4 py-3">
-                      <span className="block text-neutral-100">{customerName(job)}</span>
-                      <span className="block text-xs text-neutral-500">{job.company_name ?? job.customer_email}</span>
+                      <span className="block text-neutral-100">{isGuest(job) ? 'Guest' : customerName(job)}</span>
+                      <span className="block break-all text-xs text-neutral-500">{isGuest(job) ? contactLabel(job) : job.company_name ?? job.customer_email}</span>
                     </td>
                     <td className="px-4 py-3 text-neutral-300">{vehicleLabel(job)}</td>
                     <td className="px-4 py-3 text-neutral-300">
-                      {job.file_type} · {SERVICE_LABELS[job.requested_service] ?? job.requested_service}
+                      {isGuest(job) ? '-' : `${job.file_type} · ${SERVICE_LABELS[job.requested_service] ?? job.requested_service}`}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-neutral-300">{job.quote_amount !== null ? formatMoney(job.quote_amount, job.quote_currency) : '-'}</td>
                     <td className="px-4 py-3">
@@ -218,15 +231,21 @@ export function AdminJobsPage() {
                   className="flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-surface p-4 transition-colors hover:border-brand-500/50"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-white">{job.reference}</span>
+                    <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-white">
+                      {job.reference}
+                      {isGuest(job) && <GuestBadge />}
+                    </span>
                     <StatusBadge status={job.status} />
                   </div>
                   <p className="break-words text-sm text-neutral-200">
-                    {customerName(job)} <span className="text-neutral-500">· {job.company_name ?? job.customer_email}</span>
+                    {isGuest(job) ? 'Guest' : customerName(job)}{' '}
+                    <span className="text-neutral-500">· {isGuest(job) ? contactLabel(job) : job.company_name ?? job.customer_email}</span>
                   </p>
-                  <p className="text-xs text-neutral-400">
-                    {vehicleLabel(job)} · {job.file_type} · {SERVICE_LABELS[job.requested_service] ?? job.requested_service}
-                  </p>
+                  {!isGuest(job) && (
+                    <p className="text-xs text-neutral-400">
+                      {vehicleLabel(job)} · {job.file_type} · {SERVICE_LABELS[job.requested_service] ?? job.requested_service}
+                    </p>
+                  )}
                   <p className="text-xs text-neutral-500">
                     {formatDate(job.created_at)} · {job.quote_amount !== null ? formatMoney(job.quote_amount, job.quote_currency) : 'No quote'} ·{' '}
                     {job.payment_status === 'paid' ? 'Paid' : 'Not paid'}

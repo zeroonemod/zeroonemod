@@ -83,3 +83,12 @@ export const PROFILE_COLUMNS = 'id, email, role, full_name, company_name, custom
 export function confirmAction(message: string): boolean {
   return window.confirm(message);
 }
+
+/** Visible marker for guest requests in lists and on the job page. */
+export function GuestBadge() {
+  return (
+    <span className="inline-flex items-center whitespace-nowrap rounded-full border border-brand-500/60 bg-brand-500/[0.08] px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-brand-400">
+      Guest request
+    </span>
+  );
+}

@@ -21,3 +21,9 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Local tooling
+.vercel
+.claude
+supabase/.temp
+supabase/.branches

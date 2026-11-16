@@ -2,21 +2,24 @@ import { useId, useRef, useState, type DragEvent, type KeyboardEvent } from 'rea
 import { Upload } from 'lucide-react';
 import { MAX_FILE_BYTES } from '@/lib/uploadLimits';
 
-interface DropzoneProps {
+interface UploadDropzoneProps {
   onFilesSelected: (files: File[]) => void;
   title?: string;
   description?: string;
   error?: string;
   className?: string;
+  /** Smaller drop area for dashboard and admin uploads. */
+  compact?: boolean;
 }
 
-export function Dropzone({
+export function UploadDropzone({
   onFilesSelected,
   title = 'Drag and drop your original ECU/TCU file or click to upload',
   description = 'Any file format. Up to 100 MB per file. Multiple files allowed.',
   error,
   className = '',
-}: DropzoneProps) {
+  compact = false,
+}: UploadDropzoneProps) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -65,7 +68,7 @@ export function Dropzone({
         }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
-        className={`group flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border border-dashed px-6 py-10 text-center transition-colors duration-200 sm:min-h-[260px] ${
+        className={`group flex cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border border-dashed px-6 text-center transition-colors duration-200 ${compact ? 'min-h-[150px] py-8' : 'min-h-[220px] py-10 sm:min-h-[260px]'} ${
           isDragging ? 'border-brand-500 bg-brand-500/[0.06]' : 'border-white/20 bg-surface-sunken hover:border-brand-500 hover:bg-white/[0.02]'
         } ${error ? 'border-brand-500' : ''}`}
       >

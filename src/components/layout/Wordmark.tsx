@@ -2,14 +2,16 @@ interface WordmarkProps {
   className?: string;
 }
 
+/** The ZEROONEMOD logo exactly as supplied. Never replace it with text or an icon. */
 export function Wordmark({ className = 'h-6' }: WordmarkProps) {
   return (
     <img
-      src="/WhatsApp_Image_2026-11-11_at_5.40.22_PM-removebg-preview.png"
+      src="/logo.png"
       alt="ZEROONEMOD"
-      width={96}
-      height={24}
+      width={399}
+      height={51}
       decoding="async"
+      draggable={false}
       className={`${className} w-auto select-none self-start`}
     />
   );

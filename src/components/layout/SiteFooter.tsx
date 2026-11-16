@@ -31,13 +31,11 @@ export function SiteFooter() {
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-400">Contact</p>
           <a
             href={`mailto:${SITE_CONFIG.businessEmail}`}
-            className="text-sm text-neutral-300 transition-colors duration-200 hover:text-brand-400"
+            className="break-all text-sm text-neutral-300 transition-colors duration-200 hover:text-brand-400"
           >
             {SITE_CONFIG.businessEmail}
           </a>
-          <p className="text-xs leading-relaxed text-neutral-500">
-            {SITE_CONFIG.companyLegalName} · {SITE_CONFIG.companyAddress} · {SITE_CONFIG.companyTaxId}
-          </p>
+          <p className="text-xs leading-relaxed text-neutral-500">{SITE_CONFIG.companyLegalName}</p>
         </div>
       </div>
 

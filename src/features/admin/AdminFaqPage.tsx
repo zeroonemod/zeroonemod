@@ -2,10 +2,11 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from 'lucide-react';
 import { NoticeLine, type Notice } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
+import { ConfirmButton } from '@/components/ui/ConfirmButton';
 import { TextArea, TextInput } from '@/components/ui/FormField';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { supabase } from '@/lib/supabase';
-import { AdminPageHeader, confirmAction, EmptyRow, Panel } from '@/features/admin/adminShared';
+import { AdminPageHeader, EmptyRow, Panel } from '@/features/admin/adminShared';
 
 interface FaqRow {
   id: string;
@@ -84,7 +85,6 @@ export function AdminFaqPage() {
   };
 
   const remove = async (item: FaqRow) => {
-    if (!confirmAction(`Delete "${item.question}"?`)) return;
     const { error } = await supabase.from('faq_items').delete().eq('id', item.id);
     await reload();
     report(error, 'Question deleted.');
@@ -136,10 +136,15 @@ export function AdminFaqPage() {
                     <IconButton label="Edit" onClick={() => setEditingId(item.id)}>
                       <Pencil className="h-4 w-4" />
                     </IconButton>
-                    <IconButton label="Delete" onClick={() => remove(item)}>
-                      <Trash2 className="h-4 w-4" />
-                    </IconButton>
                   </div>
+                </div>
+              )}
+              {editingId !== item.id && (
+                <div className="mt-3 flex justify-end">
+                  <ConfirmButton variant="ghost" message={`Delete the question "${item.question}"?`} confirmLabel="Yes, delete" onConfirm={() => remove(item)}>
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    Delete
+                  </ConfirmButton>
                 </div>
               )}
             </li>

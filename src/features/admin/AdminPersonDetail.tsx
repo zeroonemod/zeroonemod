@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { NoticeLine, type Notice } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
+import { ConfirmButton } from '@/components/ui/ConfirmButton';
 import { TextArea } from '@/components/ui/FormField';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { callFunction, errorMessage } from '@/lib/api';
 import { formatFileSize } from '@/lib/uploadLimits';
 import { supabase } from '@/lib/supabase';
-import { AdminPageHeader, confirmAction, EmptyRow, Panel, PROFILE_COLUMNS, type ProfileRow } from '@/features/admin/adminShared';
+import { AdminPageHeader, EmptyRow, Panel, PROFILE_COLUMNS, type ProfileRow } from '@/features/admin/adminShared';
 import { Detail, DetailGrid } from '@/features/jobs/JobInfo';
 import { MessageThreadList } from '@/features/jobs/MessageThreadList';
 import { useMessageThreads } from '@/features/jobs/useMessageThreads';
@@ -94,7 +95,6 @@ export function AdminPersonDetail({ kind }: { kind: 'customer' | 'partner' }) {
 
   const toggleActive = async () => {
     const next = !profile.is_active;
-    if (!confirmAction(next ? 'Enable this account? The user can log in again.' : 'Disable this account? The user will be signed out and cannot log in.')) return;
     setBusy(true);
     setNotice(null);
     try {
@@ -109,7 +109,6 @@ export function AdminPersonDetail({ kind }: { kind: 'customer' | 'partner' }) {
   };
 
   const deleteData = async () => {
-    if (!confirmAction(`Permanently delete ${profile.email}'s login and files, and anonymise their ${jobs.length} job(s)? This cannot be undone.`)) return;
     setBusy(true);
     setNotice(null);
     try {
@@ -150,13 +149,23 @@ export function AdminPersonDetail({ kind }: { kind: 'customer' | 'partner' }) {
             <Detail label="Account" value={profile.is_active ? 'Active' : 'Disabled'} />
           </DetailGrid>
           <div className="mt-6 flex flex-col gap-3 border-t border-white/[0.08] pt-5 sm:flex-row sm:flex-wrap">
-            <Button variant="secondary" size="sm" onClick={toggleActive} disabled={busy}>
-              {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+            <ConfirmButton
+              busy={busy}
+              message={profile.is_active ? 'Disable this account? The user will be signed out and cannot log in.' : 'Enable this account? The user can log in again.'}
+              confirmLabel={profile.is_active ? 'Yes, disable' : 'Yes, enable'}
+              onConfirm={toggleActive}
+            >
               {profile.is_active ? 'Disable account' : 'Enable account'}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={deleteData} disabled={busy}>
+            </ConfirmButton>
+            <ConfirmButton
+              variant="ghost"
+              disabled={busy}
+              message={`Permanently delete ${profile.email}'s login and files, and anonymise their ${jobs.length} job(s)? This cannot be undone.`}
+              confirmLabel="Yes, delete data"
+              onConfirm={deleteData}
+            >
               Delete personal data (GDPR)
-            </Button>
+            </ConfirmButton>
           </div>
           <div className="mt-3">
             <NoticeLine notice={notice} />

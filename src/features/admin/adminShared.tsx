@@ -80,9 +80,6 @@ export interface ProfileRow {
 
 export const PROFILE_COLUMNS = 'id, email, role, full_name, company_name, customer_type, country, phone, is_active, created_at';
 
-export function confirmAction(message: string): boolean {
-  return window.confirm(message);
-}
 
 /** Visible marker for guest requests in lists and on the job page. */
 export function GuestBadge() {

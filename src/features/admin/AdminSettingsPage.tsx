@@ -1,13 +1,14 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Download, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Download, Plus, Trash2 } from 'lucide-react';
 import { NoticeLine, type Notice } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
+import { ConfirmButton } from '@/components/ui/ConfirmButton';
 import { CheckboxField, TextArea, TextInput } from '@/components/ui/FormField';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { callFunction, errorMessage } from '@/lib/api';
 import { isValidEmail } from '@/lib/requestForms';
 import { supabase } from '@/lib/supabase';
-import { AdminPageHeader, confirmAction, Panel, useAdminSettings } from '@/features/admin/adminShared';
+import { AdminPageHeader, Panel, useAdminSettings } from '@/features/admin/adminShared';
 import { exportJobsCsv, exportPaymentsCsv } from '@/features/admin/AdminJobsPage';
 import { useAdminJobs } from '@/features/admin/useAdminJobs';
 import { formatDate } from '@/features/jobs/jobFormat';
@@ -64,7 +65,6 @@ function GeneralSettings({ initialEmail, initialDays, initialAuto, onSaved }: { 
   };
 
   const runCleanup = async () => {
-    if (auto && !confirmAction(`Run file cleanup now? Files of jobs older than ${days} days will be permanently deleted.`)) return;
     setCleanupBusy(true);
     setCleanupNotice(null);
     try {
@@ -94,10 +94,19 @@ function GeneralSettings({ initialEmail, initialDays, initialAuto, onSaved }: { 
       </form>
       <div className="mt-6 flex flex-col gap-3 border-t border-white/[0.08] pt-5">
         <p className="text-sm text-neutral-400">Unfinished uploads older than 24 hours are always removed. Files of a single job can be deleted from the job page.</p>
-        <Button variant="secondary" size="sm" onClick={runCleanup} disabled={cleanupBusy} className="self-start">
-          {cleanupBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+        <ConfirmButton
+          busy={cleanupBusy}
+          className="self-start"
+          message={
+            auto
+              ? `Run file cleanup now? Files of jobs older than ${days} days will be permanently deleted.`
+              : 'Run cleanup now? Only unfinished uploads older than 24 hours are removed (auto-delete is off).'
+          }
+          confirmLabel="Yes, run cleanup"
+          onConfirm={runCleanup}
+        >
           Run cleanup now
-        </Button>
+        </ConfirmButton>
         <NoticeLine notice={cleanupNotice} />
       </div>
     </Panel>
@@ -201,7 +210,6 @@ function DeletionRequestsPanel() {
 
   const process = async (request: DeletionRequest) => {
     if (!request.user_id) return;
-    if (!confirmAction(`Permanently delete the account, files and personal data of ${request.email}? Job records are anonymised. This cannot be undone.`)) return;
     setBusyId(request.id);
     setNotice(null);
     try {
@@ -243,10 +251,15 @@ function DeletionRequestsPanel() {
               {request.status === 'pending' && (
                 <div className="flex flex-wrap gap-2">
                   {request.user_id ? (
-                    <Button size="sm" onClick={() => process(request)} disabled={busyId === request.id}>
-                      {busyId === request.id && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+                    <ConfirmButton
+                      variant="primary"
+                      busy={busyId === request.id}
+                      message={`Permanently delete the account, files and personal data of ${request.email}? Job records are anonymised. This cannot be undone.`}
+                      confirmLabel="Yes, delete data"
+                      onConfirm={() => process(request)}
+                    >
                       Delete data
-                    </Button>
+                    </ConfirmButton>
                   ) : (
                     <Button size="sm" variant="secondary" onClick={() => setStatus(request, 'completed')} disabled={busyId === request.id}>
                       Mark completed

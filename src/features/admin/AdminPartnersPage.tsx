@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Check, Loader2, UserPlus, X } from 'lucide-react';
 import { NoticeLine, type Notice } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
+import { ConfirmButton } from '@/components/ui/ConfirmButton';
 import { TextInput } from '@/components/ui/FormField';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { SelectInput } from '@/components/ui/Select';
 import { callFunction, errorMessage } from '@/lib/api';
 import { isValidEmail } from '@/lib/requestForms';
 import { supabase } from '@/lib/supabase';
-import { AdminPageHeader, confirmAction, EmptyRow, Panel } from '@/features/admin/adminShared';
+import { AdminPageHeader, EmptyRow, Panel } from '@/features/admin/adminShared';
 import { PeopleList, usePeople } from '@/features/admin/AdminCustomersPage';
 import { useAdminJobs } from '@/features/admin/useAdminJobs';
 import { formatDate } from '@/features/jobs/jobFormat';
@@ -56,7 +57,6 @@ export function AdminPartnersPage() {
   const visibleRequests = (requests ?? []).filter((r) => requestFilter === 'all' || r.status === requestFilter);
 
   const approve = async (request: PartnerRequest) => {
-    if (!confirmAction(`Approve ${request.company_name} and send a partner invitation to ${request.email}?`)) return;
     setBusyId(request.id);
     setRequestNotice(null);
     try {
@@ -83,7 +83,6 @@ export function AdminPartnersPage() {
   };
 
   const reject = async (request: PartnerRequest) => {
-    if (!confirmAction(`Reject the request from ${request.company_name}?`)) return;
     setBusyId(request.id);
     const { error: updateError } = await supabase
       .from('partner_requests')
@@ -165,15 +164,26 @@ export function AdminPartnersPage() {
                   </p>
                 </div>
                 {request.status === 'pending' && (
-                  <div className="flex shrink-0 gap-2">
-                    <Button size="sm" onClick={() => approve(request)} disabled={busyId === request.id}>
-                      {busyId === request.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Check className="h-3.5 w-3.5" aria-hidden="true" />}
+                  <div className="flex shrink-0 flex-wrap gap-2 lg:max-w-sm lg:justify-end">
+                    <ConfirmButton
+                      variant="primary"
+                      busy={busyId === request.id}
+                      message={`Approve ${request.company_name} and send a partner invitation to ${request.email}?`}
+                      confirmLabel="Yes, approve"
+                      onConfirm={() => approve(request)}
+                    >
+                      <Check className="h-3.5 w-3.5" aria-hidden="true" />
                       Approve
-                    </Button>
-                    <Button size="sm" variant="secondary" onClick={() => reject(request)} disabled={busyId === request.id}>
+                    </ConfirmButton>
+                    <ConfirmButton
+                      disabled={busyId === request.id}
+                      message={`Reject the request from ${request.company_name}?`}
+                      confirmLabel="Yes, reject"
+                      onConfirm={() => reject(request)}
+                    >
                       <X className="h-3.5 w-3.5" aria-hidden="true" />
                       Reject
-                    </Button>
+                    </ConfirmButton>
                   </div>
                 )}
               </li>

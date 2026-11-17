@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, Circle, Link2, Loader2, Mail, Send, Trash2, Truck } from 'lucide-react';
 import { NoticeLine, type Notice } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
+import { ConfirmButton } from '@/components/ui/ConfirmButton';
 import { TextArea, TextInput } from '@/components/ui/FormField';
 import { SelectInput } from '@/components/ui/Select';
 import { callFunction, errorMessage, notify } from '@/lib/api';
+import { copyText } from '@/lib/clipboard';
 import { JOB_FILES_BUCKET } from '@/lib/storagePaths';
 import { supabase } from '@/lib/supabase';
-import { confirmAction, Panel } from '@/features/admin/adminShared';
+import { Panel } from '@/features/admin/adminShared';
 import { FileDownloadList, FileUploader } from '@/features/jobs/JobFileActions';
 import { formatDate, formatDateTime, formatMoney } from '@/features/jobs/jobFormat';
 import {
@@ -180,14 +182,15 @@ export function PaymentPanel({ job, payments, onChanged }: PanelProps & { paymen
     }
   };
 
-  const markPaid = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const value = Number(amount.replace(',', '.'));
-    if (!Number.isFinite(value) || value <= 0) {
+  const paidValue = Number(amount.replace(',', '.'));
+  const paidValueValid = Number.isFinite(paidValue) && paidValue > 0;
+
+  const markPaid = async () => {
+    if (!paidValueValid) {
       setPayNotice({ tone: 'error', text: 'Enter the amount received.' });
       return;
     }
-    if (!confirmAction(`Mark ${job.reference} as paid (${formatMoney(value, 'EUR')}, ${PAYMENT_METHOD_LABELS[method]})?`)) return;
+    const value = paidValue;
     setPayBusy(true);
     setPayNotice(null);
     try {
@@ -243,7 +246,7 @@ export function PaymentPanel({ job, payments, onChanged }: PanelProps & { paymen
         )}
 
         {!paid && (
-          <form onSubmit={markPaid} className="flex flex-col gap-4 border-t border-white/[0.08] pt-5" noValidate>
+          <form onSubmit={(event) => event.preventDefault()} className="flex flex-col gap-4 border-t border-white/[0.08] pt-5" noValidate>
             <p className="text-sm font-medium text-neutral-200">Mark as paid</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <TextInput id="paid-amount" label="Amount (EUR)" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
@@ -252,10 +255,21 @@ export function PaymentPanel({ job, payments, onChanged }: PanelProps & { paymen
               <TextInput id="paid-reference" label="Reference" optional value={reference} maxLength={200} onChange={(event) => setReference(event.target.value)} />
             </div>
             <NoticeLine notice={payNotice} />
-            <Button type="submit" disabled={payBusy} className="w-full sm:w-auto sm:self-end">
-              {payBusy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+            <ConfirmButton
+              variant="primary"
+              size="md"
+              busy={payBusy}
+              className="w-full sm:w-auto sm:self-end"
+              message={
+                paidValueValid
+                  ? `Mark ${job.reference} as paid: ${formatMoney(paidValue, 'EUR')}, ${PAYMENT_METHOD_LABELS[method]}?`
+                  : 'Enter the amount received first.'
+              }
+              confirmLabel={paidValueValid ? 'Yes, mark as paid' : 'OK'}
+              onConfirm={markPaid}
+            >
               Mark as paid
-            </Button>
+            </ConfirmButton>
           </form>
         )}
 
@@ -290,7 +304,6 @@ export function DeliveryPanel({ job, completed, onChanged }: PanelProps & { comp
   const delivered = job.status === 'Delivered';
 
   const deliver = async () => {
-    if (!confirmAction(`Deliver ${job.reference}? The customer will be able to download the completed file and receives an email.`)) return;
     setBusy(true);
     setNotice(null);
     try {
@@ -323,10 +336,19 @@ export function DeliveryPanel({ job, completed, onChanged }: PanelProps & { comp
             <Check ok={hasFile} label="Completed file uploaded" />
           </ul>
           <NoticeLine notice={notice} />
-          <Button onClick={deliver} disabled={busy || !paid || !hasFile} className="w-full sm:w-auto sm:self-end">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Truck className="h-4 w-4" aria-hidden="true" />}
+          <ConfirmButton
+            variant="primary"
+            size="md"
+            busy={busy}
+            disabled={!paid || !hasFile}
+            className="w-full sm:w-auto sm:self-end"
+            message={`Deliver ${job.reference}? The customer can then download the completed file${job.user_id ? ' and receives an email' : ''}.`}
+            confirmLabel="Yes, deliver"
+            onConfirm={deliver}
+          >
+            <Truck className="h-4 w-4" aria-hidden="true" />
             Deliver
-          </Button>
+          </ConfirmButton>
         </div>
       )}
       {!job.user_id && <SecureLinkActions job={job} completed={completed} ready={paid && hasFile} />}
@@ -371,7 +393,7 @@ function SecureLinkActions({ job, completed, ready }: { job: JobRow; completed: 
         if (error || !data) throw new Error('The link could not be created.');
         links.push(completed.length > 1 ? `${file.file_name}: ${data.signedUrl}` : data.signedUrl);
       }
-      await navigator.clipboard.writeText(links.join('\n'));
+      if (!(await copyText(links.join('\n')))) throw new Error('The link could not be copied. Please try again.');
       setNotice({ tone: 'success', text: `Secure link copied. It is valid for ${SECURE_LINK_DAYS} days.` });
     } catch (error) {
       setNotice({ tone: 'error', text: errorMessage(error) });
@@ -411,7 +433,6 @@ export function FilesPanel({ job, files, onChanged }: PanelProps & { files: JobF
   const completed = files.filter((f) => f.kind === 'completed');
 
   const deleteAll = async () => {
-    if (!confirmAction(`Permanently delete all ${files.length} files of ${job.reference}? This cannot be undone.`)) return;
     setBusy(true);
     setNotice(null);
     try {
@@ -435,10 +456,16 @@ export function FilesPanel({ job, files, onChanged }: PanelProps & { files: JobF
       title="Files"
       actions={
         files.length > 0 ? (
-          <Button variant="ghost" size="sm" onClick={deleteAll} disabled={busy}>
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />}
+          <ConfirmButton
+            variant="ghost"
+            busy={busy}
+            message={`Permanently delete all ${files.length} file${files.length === 1 ? '' : 's'} of ${job.reference}? This cannot be undone.`}
+            confirmLabel="Yes, delete files"
+            onConfirm={deleteAll}
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
             Delete all files
-          </Button>
+          </ConfirmButton>
         ) : null
       }
     >
@@ -529,7 +556,6 @@ export function DeleteJobPanel({ job, hasPayments }: { job: JobRow; hasPayments:
   const [notice, setNotice] = useState<Notice>(null);
 
   const remove = async () => {
-    if (!confirmAction(`Permanently delete ${job.reference}? Its files, messages, notes and activity log are deleted too. This cannot be undone.`)) return;
     setBusy(true);
     setNotice(null);
     try {
@@ -548,10 +574,16 @@ export function DeleteJobPanel({ job, hasPayments }: { job: JobRow; hasPayments:
           ? 'This job has a recorded payment, so it is kept for your records. You can still delete its files above.'
           : 'Permanently removes this job with its files, messages, notes and activity log. Use it for tests, spam or duplicates.'}
       </p>
-      <Button variant="secondary" size="sm" onClick={remove} disabled={busy || hasPayments}>
-        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />}
+      <ConfirmButton
+        busy={busy}
+        disabled={hasPayments}
+        message={`Permanently delete ${job.reference}? Its files, messages, notes and activity log are deleted too. This cannot be undone.`}
+        confirmLabel="Yes, delete job"
+        onConfirm={remove}
+      >
+        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
         Delete job
-      </Button>
+      </ConfirmButton>
       <div className="mt-3">
         <NoticeLine notice={notice} />
       </div>

@@ -1,12 +1,13 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Loader2, Mail, MessageCircle, Phone } from 'lucide-react';
+import { ArrowLeft, Check, Copy, Loader2, Mail, MessageCircle, Phone } from 'lucide-react';
 import { Alert, NoticeLine, type Notice } from '@/components/ui/Alert';
 import { Button, buttonClasses } from '@/components/ui/Button';
 import { CheckboxField, TextInput } from '@/components/ui/FormField';
 import { SelectInput } from '@/components/ui/Select';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { callFunction, errorMessage, notify } from '@/lib/api';
+import { copyText } from '@/lib/clipboard';
 import { isValidEmail } from '@/lib/requestForms';
 import { supabase } from '@/lib/supabase';
 import { GuestBadge, Panel } from '@/features/admin/adminShared';
@@ -59,6 +60,26 @@ export function GuestRequestDetail({ job, files, notes, events, hasPayments, onC
   );
 }
 
+/**
+ * Copies a value to the clipboard. Email and Call open the computer's mail and phone apps,
+ * which not every computer has set up, so copying always works as a fallback.
+ */
+function CopyButton({ value, label }: { value: string; label: string }) {
+  const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle');
+
+  const copy = async () => {
+    setState((await copyText(value)) ? 'copied' : 'failed');
+    window.setTimeout(() => setState('idle'), 2000);
+  };
+
+  return (
+    <Button variant="secondary" size="sm" onClick={copy} aria-label={`Copy ${label}`}>
+      {state === 'copied' ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
+      {state === 'copied' ? 'Copied' : state === 'failed' ? 'Copy failed' : 'Copy'}
+    </Button>
+  );
+}
+
 /** wa.me needs the number in international format, digits only. */
 function whatsappUrl(phone: string): string {
   return `https://wa.me/${phone.replace(/\D/g, '').replace(/^00/, '')}`;
@@ -77,10 +98,13 @@ function GuestContactPanel({ job }: { job: JobRow }) {
               <dt className="text-xs uppercase tracking-wider text-neutral-500">Email</dt>
               <dd className="break-all text-neutral-100">{email}</dd>
             </div>
-            <a href={`mailto:${email}?subject=${encodeURIComponent(`Your file ${job.reference}`)}`} className={buttonClasses('secondary', 'sm', 'shrink-0')}>
-              <Mail className="h-3.5 w-3.5" aria-hidden="true" />
-              Email
-            </a>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <CopyButton value={email} label="email" />
+              <a href={`mailto:${email}?subject=${encodeURIComponent(`Your file ${job.reference}`)}`} className={buttonClasses('secondary', 'sm')}>
+                <Mail className="h-3.5 w-3.5" aria-hidden="true" />
+                Email
+              </a>
+            </div>
           </div>
         )}
         {phone && (
@@ -89,7 +113,8 @@ function GuestContactPanel({ job }: { job: JobRow }) {
               <dt className="text-xs uppercase tracking-wider text-neutral-500">Phone</dt>
               <dd className="break-all text-neutral-100">{phone}</dd>
             </div>
-            <div className="flex shrink-0 gap-2">
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <CopyButton value={phone} label="phone number" />
               <a href={`tel:${phone.replace(/[^\d+]/g, '')}`} className={buttonClasses('secondary', 'sm')}>
                 <Phone className="h-3.5 w-3.5" aria-hidden="true" />
                 Call

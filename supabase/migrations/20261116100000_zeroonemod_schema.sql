@@ -1,9 +1,16 @@
 /*
-# ZEROONEMOD initial schema (fresh database)
+# ZEROONEMOD database schema (complete, for a fresh Supabase project)
+
+Run this single file once on a new project (SQL editor or `supabase db push`).
+It creates everything the website needs: tables, the job reference sequence,
+row level security policies, the private storage bucket and its policies,
+helper and admin functions, and triggers.
 
 Plain-English summary
 - Customer, partner and admin accounts (profiles), created automatically for every new login.
 - Jobs with references ZOM-000001, ZOM-000002, ... and the eight agreed statuses.
+- Guest requests (job_type 'guest'): files plus an email and/or phone, no account, same numbering.
+  The admin can convert one into a normal customer job later.
 - Files, payments, messages, internal notes, activity log, GDPR deletion requests.
 - Contact messages and partner access requests from the public forms.
 - FAQ entries and admin settings (notification email, file retention, reply templates).
@@ -52,28 +59,29 @@ CREATE TABLE public.jobs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   reference text NOT NULL UNIQUE DEFAULT 'ZOM-' || lpad(nextval('public.job_reference_seq')::text, 6, '0'),
   user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  job_type text NOT NULL DEFAULT 'customer' CHECK (job_type IN ('customer', 'guest')),
   status text NOT NULL DEFAULT 'Submitted' CHECK (status IN (
     'Submitted', 'Under Review', 'Awaiting Information', 'Quotation Sent',
     'Awaiting Payment', 'In Progress', 'Completed', 'Delivered'
   )),
-  file_type text NOT NULL CHECK (file_type IN ('ECU', 'TCU')),
-  requested_service text NOT NULL CHECK (requested_service IN (
+  file_type text CHECK (file_type IN ('ECU', 'TCU')),
+  requested_service text CHECK (requested_service IN (
     'stage1_calibration', 'original_restoration', 'decoding', 'other_modification', 'not_sure'
   )),
   service_comments text,
-  customer_type text NOT NULL CHECK (customer_type IN ('individual', 'workshop')),
-  customer_first_name text NOT NULL,
-  customer_last_name text NOT NULL,
-  customer_email text NOT NULL,
-  customer_country text NOT NULL,
+  customer_type text CHECK (customer_type IN ('individual', 'workshop')),
+  customer_first_name text,
+  customer_last_name text,
+  customer_email text,
+  customer_country text,
   customer_phone text,
   company_name text,
-  vehicle_make text NOT NULL,
-  vehicle_model text NOT NULL,
-  vehicle_year integer NOT NULL,
-  vehicle_engine text NOT NULL,
-  vehicle_fuel_type text NOT NULL,
-  vehicle_vin text NOT NULL,
+  vehicle_make text,
+  vehicle_model text,
+  vehicle_year integer,
+  vehicle_engine text,
+  vehicle_fuel_type text,
+  vehicle_vin text,
   ecu_manufacturer text,
   ecu_hardware_number text,
   ecu_software_number text,
@@ -91,9 +99,22 @@ CREATE TABLE public.jobs (
   delivered_at timestamptz,
   files_deleted_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  -- A customer job always has the full customer, vehicle and service details.
+  CONSTRAINT jobs_customer_details_check CHECK (
+    job_type = 'guest' OR (
+      file_type IS NOT NULL AND requested_service IS NOT NULL AND customer_type IS NOT NULL
+      AND customer_first_name IS NOT NULL AND customer_last_name IS NOT NULL AND customer_email IS NOT NULL
+      AND customer_country IS NOT NULL AND vehicle_make IS NOT NULL AND vehicle_model IS NOT NULL
+      AND vehicle_year IS NOT NULL AND vehicle_engine IS NOT NULL AND vehicle_fuel_type IS NOT NULL
+      AND vehicle_vin IS NOT NULL
+    )
+  ),
+  -- A guest request needs at least an email or a phone number.
+  CONSTRAINT jobs_guest_contact_check CHECK (job_type <> 'guest' OR customer_email IS NOT NULL OR customer_phone IS NOT NULL)
 );
 CREATE INDEX jobs_user_id_idx ON public.jobs (user_id);
+CREATE INDEX jobs_job_type_idx ON public.jobs (job_type);
 CREATE INDEX jobs_customer_email_idx ON public.jobs (lower(customer_email));
 CREATE INDEX jobs_created_at_idx ON public.jobs (created_at DESC);
 CREATE INDEX jobs_status_idx ON public.jobs (status);

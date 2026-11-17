@@ -17,14 +17,14 @@ src/
   features/admin       Admin panel
   features/jobs        Shared job types, files, messages
 supabase/
-  migrations/          Fresh database schema (tables, security policies, storage, admin functions)
+  migrations/          One complete schema file: tables, sequence, RLS policies, storage bucket, functions, triggers
   functions/           submit-job, submit-guest, submit-request, notify, admin-users, retention-cleanup, payment-webhook
 ```
 
 ## 1. Supabase
 
 1. Create a new Supabase project (region: EU).
-2. Apply the schema. Either paste the files in `supabase/migrations/` into the SQL editor and run them in order, or with the CLI:
+2. Apply the schema. Either paste `supabase/migrations/20261116100000_zeroonemod_schema.sql` (one file with everything) into the SQL editor and run it, or with the CLI:
    ```bash
    npx supabase login
    npx supabase link --project-ref YOUR_PROJECT_REF

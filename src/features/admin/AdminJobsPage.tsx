@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { NoticeLine } from '@/components/ui/Alert';
 import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { LoadingState } from '@/components/ui/LoadingState';
@@ -107,6 +108,7 @@ export async function exportPaymentsCsv() {
 export function AdminJobsPage() {
   const { jobs, error } = useAdminJobs();
   const navigate = useNavigate();
+  const deletedRef = (useLocation().state as { deleted?: string } | null)?.deleted;
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
   const [payment, setPayment] = useState('all');
@@ -156,6 +158,7 @@ export function AdminJobsPage() {
         }
       />
       {exportError && <p role="alert" className="text-sm text-red-400">{exportError}</p>}
+      {deletedRef && <NoticeLine notice={{ tone: 'success', text: `${deletedRef} was deleted.` }} />}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr]">
         <div className="sm:col-span-2 xl:col-span-1">

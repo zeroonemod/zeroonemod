@@ -6,7 +6,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { supabase } from '@/lib/supabase';
 import { Panel, useAdminSettings } from '@/features/admin/adminShared';
 import { GuestRequestDetail } from '@/features/admin/adminGuest';
-import { ActivityPanel, DeliveryPanel, FilesPanel, NotesPanel, PaymentPanel, QuotationPanel, StatusPanel } from '@/features/admin/adminJobPanels';
+import { ActivityPanel, DeleteJobPanel, DeliveryPanel, FilesPanel, NotesPanel, PaymentPanel, QuotationPanel, StatusPanel } from '@/features/admin/adminJobPanels';
 import { Detail, DetailGrid, JobVehicleDetails } from '@/features/jobs/JobInfo';
 import { JobMessages } from '@/features/jobs/JobMessages';
 import {
@@ -86,7 +86,9 @@ export function AdminJobDetail() {
 
   const { job, files, payments, notes, events } = bundle;
   const onChanged = () => void refresh();
-  if (isGuest(job)) return <GuestRequestDetail job={job} files={files} notes={notes} events={events} onChanged={onChanged} />;
+  if (isGuest(job)) {
+    return <GuestRequestDetail job={job} files={files} notes={notes} events={events} hasPayments={payments.length > 0} onChanged={onChanged} />;
+  }
   // Remount stateful panels when the job changes so their fields show the saved values.
   const version = job.updated_at;
 
@@ -159,6 +161,7 @@ export function AdminJobDetail() {
           <DeliveryPanel job={job} completed={files.filter((f) => f.kind === 'completed')} onChanged={onChanged} />
           <NotesPanel jobId={job.id} notes={notes} onChanged={onChanged} />
           <ActivityPanel events={events} />
+          <DeleteJobPanel job={job} hasPayments={payments.length > 0} />
         </div>
       </div>
     </div>

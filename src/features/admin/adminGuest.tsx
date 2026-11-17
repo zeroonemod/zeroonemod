@@ -10,7 +10,7 @@ import { callFunction, errorMessage, notify } from '@/lib/api';
 import { isValidEmail } from '@/lib/requestForms';
 import { supabase } from '@/lib/supabase';
 import { GuestBadge, Panel } from '@/features/admin/adminShared';
-import { ActivityPanel, FilesPanel, NotesPanel, StatusPanel } from '@/features/admin/adminJobPanels';
+import { ActivityPanel, DeleteJobPanel, FilesPanel, NotesPanel, StatusPanel } from '@/features/admin/adminJobPanels';
 import { formatDateTime } from '@/features/jobs/jobFormat';
 import type { JobEventRow, JobFileRow, JobRow } from '@/features/jobs/jobTypes';
 import { CUSTOMER_TYPE_OPTIONS, FUEL_OPTIONS, SERVICE_OPTIONS } from '@/features/submission/types';
@@ -20,11 +20,12 @@ interface GuestRequestDetailProps {
   files: JobFileRow[];
   notes: { id: string; body: string; created_at: string }[];
   events: JobEventRow[];
+  hasPayments: boolean;
   onChanged: () => void;
 }
 
 /** Admin page for a guest request: contact details, files, status, notes, log and conversion. */
-export function GuestRequestDetail({ job, files, notes, events, onChanged }: GuestRequestDetailProps) {
+export function GuestRequestDetail({ job, files, notes, events, hasPayments, onChanged }: GuestRequestDetailProps) {
   return (
     <div className="flex flex-col gap-8">
       <Link to="/admin/jobs" className="inline-flex w-fit items-center gap-2 text-sm text-neutral-400 transition-colors hover:text-white">
@@ -51,6 +52,7 @@ export function GuestRequestDetail({ job, files, notes, events, onChanged }: Gue
           <StatusPanel key={`status-${job.updated_at}`} job={job} onChanged={onChanged} />
           <NotesPanel jobId={job.id} notes={notes} onChanged={onChanged} />
           <ActivityPanel events={events} />
+          <DeleteJobPanel job={job} hasPayments={hasPayments} />
         </div>
       </div>
     </div>

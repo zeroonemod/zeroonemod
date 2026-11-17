@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, Circle, Link2, Loader2, Mail, Send, Trash2, Truck } from 'lucide-react';
 import { NoticeLine, type Notice } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
@@ -515,6 +516,45 @@ export function NotesPanel({ jobId, notes, onChanged }: { jobId: string; notes: 
           Save note
         </Button>
       </form>
+    </Panel>
+  );
+}
+
+/* -------------------------------------------------------------- delete job */
+
+/** Permanently deletes the job and everything attached to it. Jobs with a recorded payment are kept. */
+export function DeleteJobPanel({ job, hasPayments }: { job: JobRow; hasPayments: boolean }) {
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<Notice>(null);
+
+  const remove = async () => {
+    if (!confirmAction(`Permanently delete ${job.reference}? Its files, messages, notes and activity log are deleted too. This cannot be undone.`)) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      await callFunction('admin-users', { action: 'delete_job', jobId: job.id });
+      navigate('/admin/jobs', { replace: true, state: { deleted: job.reference } });
+    } catch (error) {
+      setNotice({ tone: 'error', text: errorMessage(error) });
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Panel title="Delete job">
+      <p className="mb-4 text-sm leading-[1.5] text-neutral-400">
+        {hasPayments
+          ? 'This job has a recorded payment, so it is kept for your records. You can still delete its files above.'
+          : 'Permanently removes this job with its files, messages, notes and activity log. Use it for tests, spam or duplicates.'}
+      </p>
+      <Button variant="secondary" size="sm" onClick={remove} disabled={busy || hasPayments}>
+        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />}
+        Delete job
+      </Button>
+      <div className="mt-3">
+        <NoticeLine notice={notice} />
+      </div>
     </Panel>
   );
 }

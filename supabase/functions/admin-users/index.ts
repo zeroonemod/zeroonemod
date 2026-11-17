@@ -25,6 +25,8 @@ Deno.serve(async (req) => {
         return json(req, await invitePartner(admin, body));
       case 'set_active':
         return json(req, await setActive(admin, body, caller.user.id));
+      case 'delete_job':
+        return json(req, await deleteJob(admin, body));
       case 'convert_guest':
         return json(req, await convertGuest(admin, body, caller.user.id));
       case 'delete_customer_data':
@@ -94,6 +96,41 @@ async function setActive(admin: AdminClient, body: Record<string, unknown>, call
  * GDPR erasure: deletes the customer's files and login, and anonymises their job records.
  * Payment amounts and dates are kept because accounting law may require them.
  */
+/**
+ * Permanently deletes one job: its storage files, then the job row. Messages, notes, file records
+ * and the activity log go with it (ON DELETE CASCADE). Jobs with a recorded payment are kept for
+ * the accounting records.
+ */
+async function deleteJob(admin: AdminClient, body: Record<string, unknown>) {
+  const jobId = typeof body.jobId === 'string' && UUID.test(body.jobId) ? body.jobId : null;
+  if (!jobId) throw new Error('Invalid request');
+
+  const { data: job } = await admin.from('jobs').select('id, reference').eq('id', jobId).maybeSingle();
+  if (!job) throw new Error('Job not found.');
+
+  const { count, error: paymentError } = await admin.from('payments').select('id', { count: 'exact', head: true }).eq('job_id', jobId);
+  if (paymentError) throw paymentError;
+  if ((count ?? 0) > 0) throw new Error('This job has a recorded payment, so it is kept for your records. You can still delete its files.');
+
+  // Remove everything stored under the job's folder, including files no longer listed on the job.
+  const paths = new Set<string>();
+  const { data: rows } = await admin.from('job_files').select('storage_path').eq('job_id', jobId);
+  for (const row of rows ?? []) paths.add(row.storage_path as string);
+  for (const folder of ['original', 'additional', 'completed']) {
+    const { data: listed } = await admin.storage.from(BUCKET).list(`${job.reference}/${folder}`, { limit: 1000 });
+    for (const item of listed ?? []) paths.add(`${job.reference}/${folder}/${item.name}`);
+  }
+  const all = [...paths];
+  for (let i = 0; i < all.length; i += 100) {
+    const { error } = await admin.storage.from(BUCKET).remove(all.slice(i, i + 100));
+    if (error) throw error;
+  }
+
+  const { error: deleteError } = await admin.from('jobs').delete().eq('id', jobId);
+  if (deleteError) throw deleteError;
+  return { ok: true, reference: job.reference, filesRemoved: all.length };
+}
+
 async function deleteCustomerData(admin: AdminClient, body: Record<string, unknown>, callerId: string) {
   const userId = typeof body.userId === 'string' && UUID.test(body.userId) ? body.userId : null;
   const requestId = typeof body.requestId === 'string' && UUID.test(body.requestId) ? body.requestId : null;

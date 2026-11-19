@@ -14,7 +14,7 @@ export function Wordmark({ className = 'h-6' }: WordmarkProps) {
   const [failed, setFailed] = useState(false);
 
   if (failed) {
-    return <span role="img" aria-label="ZEROONEMOD" className={`${className} inline-block aspect-[399/51] self-start`} />;
+    return <span role="img" aria-label="ZEROONEMOD" className={`${className} inline-block aspect-[399/51] shrink-0 self-start`} />;
   }
 
   return (
@@ -26,7 +26,7 @@ export function Wordmark({ className = 'h-6' }: WordmarkProps) {
       decoding="async"
       draggable={false}
       onError={() => setFailed(true)}
-      className={`${className} w-auto select-none self-start`}
+      className={`${className} w-auto shrink-0 select-none self-start object-contain`}
     />
   );
 }

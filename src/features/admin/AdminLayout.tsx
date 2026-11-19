@@ -37,11 +37,12 @@ export function AdminLayout() {
   return (
     <div className="min-h-screen bg-canvas text-white lg:grid lg:grid-cols-[240px_1fr]">
       <aside className="border-b border-white/[0.08] bg-surface-sunken lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:border-b-0 lg:border-r">
-        <div className="flex h-16 items-center justify-between gap-4 px-4 lg:h-20 lg:px-6">
-          <Link to="/" aria-label="ZEROONEMOD home" className="min-w-0">
+        {/* Desktop sidebar: badge under the logo, so the logo keeps its full size in the 240px column. */}
+        <div className="flex h-16 items-center justify-between gap-4 px-4 lg:h-auto lg:flex-col lg:items-start lg:justify-start lg:gap-3 lg:px-6 lg:pb-6 lg:pt-7">
+          <Link to="/" aria-label="ZEROONEMOD home" className="shrink-0">
             <Wordmark className="h-5" />
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
             <span className="hidden shrink-0 whitespace-nowrap rounded-full border border-white/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 sm:inline-block lg:inline-block">
               Admin
             </span>

@@ -54,9 +54,9 @@ supabase/
 
 ## 3. Vercel
 
-1. Import the repository in Vercel (framework: Vite). `vercel.json` handles routing, security headers and redirects.
+1. Import the repository in Vercel (framework: Vite). `vercel.json` handles routing and security headers.
 2. Environment variables: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_SITE_URL=https://zeroonemod.com`.
-3. Domains: add `zeroonemod.com` (primary), `www.zeroonemod.com`, `zeroonemod.net` and `www.zeroonemod.net`. All of them redirect to `https://zeroonemod.com`.
+3. Domains (Vercel → Settings → Domains): `zeroonemod.com` connected to Production; `www.zeroonemod.com`, `zeroonemod.net` and `www.zeroonemod.net` set to "Redirect to `zeroonemod.com`" (308). Redirects live only there, not in `vercel.json`, so they cannot loop.
 
 Never put `SUPABASE_SERVICE_ROLE_KEY` or `RESEND_API_KEY` in Vercel or any `VITE_` variable.
 

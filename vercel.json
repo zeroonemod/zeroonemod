@@ -3,11 +3,6 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "redirects": [
-    { "source": "/:path(.*)", "has": [{ "type": "host", "value": "zeroonemod.net" }], "destination": "https://zeroonemod.com/:path", "permanent": true },
-    { "source": "/:path(.*)", "has": [{ "type": "host", "value": "www.zeroonemod.net" }], "destination": "https://zeroonemod.com/:path", "permanent": true },
-    { "source": "/:path(.*)", "has": [{ "type": "host", "value": "www.zeroonemod.com" }], "destination": "https://zeroonemod.com/:path", "permanent": true }
-  ],
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
   "headers": [
     {

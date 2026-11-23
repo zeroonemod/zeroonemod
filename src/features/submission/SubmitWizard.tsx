@@ -66,6 +66,17 @@ export function SubmitWizard({ guest = false }: { guest?: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id]);
 
+  // The "add a label photo" message goes away as soon as a photo is added.
+  useEffect(() => {
+    if (photos.length === 0) return;
+    setErrors((current) => {
+      if (!('photos' in current)) return current;
+      const next = { ...current };
+      delete next.photos;
+      return next;
+    });
+  }, [photos.length]);
+
   const effectiveForm: WizardForm = accountFields
     ? { ...form, ...(accountComplete ? accountFields : {}), email: accountFields.email, password: '', passwordConfirm: '' }
     : form;
@@ -102,7 +113,7 @@ export function SubmitWizard({ guest = false }: { guest?: boolean }) {
   };
 
   const handleNext = () => {
-    const stepErrors = validateStep(step, effectiveForm, files.length > 0, mode);
+    const stepErrors = validateStep(step, effectiveForm, files.length > 0, mode, photos.length > 0);
     if (Object.keys(stepErrors).length > 0) {
       setErrors(stepErrors);
       focusFirstError();
@@ -115,10 +126,10 @@ export function SubmitWizard({ guest = false }: { guest?: boolean }) {
     event.preventDefault();
     if (step !== LAST_STEP || isSubmitting) return;
 
-    const allErrors = validateAllSteps(effectiveForm, files.length > 0, mode);
+    const allErrors = validateAllSteps(effectiveForm, files.length > 0, mode, photos.length > 0);
     if (Object.keys(allErrors).length > 0) {
       setErrors(allErrors);
-      const firstStep = [0, 1, 2].find((index) => Object.keys(validateStep(index, effectiveForm, files.length > 0, mode)).length > 0) ?? step;
+      const firstStep = [0, 1, 2].find((index) => Object.keys(validateStep(index, effectiveForm, files.length > 0, mode, photos.length > 0)).length > 0) ?? step;
       if (firstStep !== step) setStep(firstStep);
       focusFirstError();
       return;

@@ -78,6 +78,7 @@ export function UploadDropzone({
         role="button"
         tabIndex={0}
         aria-describedby={`${inputId}-help`}
+        aria-invalid={error ? true : undefined}
         onClick={() => inputRef.current?.click()}
         onKeyDown={handleKeyDown}
         onDragOver={(event) => {

@@ -162,7 +162,7 @@ export function VehicleStep({ previousVehicles = [], onApplyVehicle, ...props }:
 
       <div className="flex flex-col gap-6 border-t border-white/[0.08] pt-8">
         <div>
-          <p className="text-sm font-semibold text-neutral-200">ECU/TCU details (optional if unknown)</p>
+          <p className="text-sm font-semibold text-neutral-200">ECU/TCU details</p>
         </div>
         <EcuStep {...props} />
       </div>

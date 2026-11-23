@@ -112,9 +112,9 @@ export function parseJobDetails(body: Record<string, unknown>): JobDetails | nul
 }
 
 /** Optional photos of the ECU/TCU label, uploaded like the files. Images only, at most 5. */
+/** At least one photo of the ECU/TCU label is required (it replaces typing the numbers by hand). */
 export function parsePhotos(value: unknown): UploadedFile[] | null {
-  if (value === undefined || value === null) return [];
-  if (!Array.isArray(value) || value.length > MAX_PHOTOS) return null;
+  if (!Array.isArray(value) || value.length === 0 || value.length > MAX_PHOTOS) return null;
   const photos: UploadedFile[] = [];
   for (const item of value) {
     if (typeof item !== 'object' || item === null) return null;

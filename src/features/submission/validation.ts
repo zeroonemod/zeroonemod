@@ -49,7 +49,8 @@ function validateVehicleExtras(form: WizardForm, errors: FormErrors) {
   if (!form.previouslyModified) errors.previouslyModified = 'Tell us whether the file was modified before.';
 }
 
-function validateEcu(form: WizardForm, errors: FormErrors) {
+function validateEcu(form: WizardForm, hasPhotos: boolean, errors: FormErrors) {
+  if (!hasPhotos) errors.photos = 'Add at least one photo of the ECU/TCU label.';
   if (form.manufacturer.trim().length > 80) errors.manufacturer = 'Please keep this under 80 characters.';
   if (form.hardwareNumber.trim().length > 80) errors.hardwareNumber = 'Please keep this under 80 characters.';
   if (form.softwareNumber.trim().length > 80) errors.softwareNumber = 'Please keep this under 80 characters.';
@@ -102,7 +103,7 @@ function validateReview(form: WizardForm, errors: FormErrors) {
 /** guest: contact only. new_account: details and a password. signed_in: details from the profile. */
 export type SubmitMode = 'guest' | 'new_account' | 'signed_in';
 
-export function validateStep(step: number, form: WizardForm, hasFiles: boolean, mode: SubmitMode): FormErrors {
+export function validateStep(step: number, form: WizardForm, hasFiles: boolean, mode: SubmitMode, hasPhotos: boolean): FormErrors {
   const errors: FormErrors = {};
   switch (step) {
     case 0:
@@ -112,7 +113,7 @@ export function validateStep(step: number, form: WizardForm, hasFiles: boolean, 
     case 1:
       validateVehicle(form, errors);
       validateVehicleExtras(form, errors);
-      validateEcu(form, errors);
+      validateEcu(form, hasPhotos, errors);
       break;
     case 2:
       if (mode === 'guest') validateGuestContact(form, errors);
@@ -124,6 +125,6 @@ export function validateStep(step: number, form: WizardForm, hasFiles: boolean, 
   return errors;
 }
 
-export function validateAllSteps(form: WizardForm, hasFiles: boolean, mode: SubmitMode): FormErrors {
-  return Object.assign({}, ...[0, 1, 2].map((step) => validateStep(step, form, hasFiles, mode)));
+export function validateAllSteps(form: WizardForm, hasFiles: boolean, mode: SubmitMode, hasPhotos: boolean): FormErrors {
+  return Object.assign({}, ...[0, 1, 2].map((step) => validateStep(step, form, hasFiles, mode, hasPhotos)));
 }

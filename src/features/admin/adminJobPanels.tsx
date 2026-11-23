@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, Circle, Link2, Loader2, Mail, MessageCircle, Send, Trash2, Truck } from 'lucide-react';
+import { Link2, Loader2, Mail, Trash2 } from 'lucide-react';
 import { NoticeLine, type Notice } from '@/components/ui/Alert';
-import { Button, buttonClasses } from '@/components/ui/Button';
+import { Button } from '@/components/ui/Button';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
-import { TextArea, TextInput } from '@/components/ui/FormField';
+import { TextArea } from '@/components/ui/FormField';
 import { SelectInput } from '@/components/ui/Select';
 import { callFunction, errorMessage, notify } from '@/lib/api';
 import { copyText } from '@/lib/clipboard';
@@ -12,18 +12,15 @@ import { JOB_FILES_BUCKET } from '@/lib/storagePaths';
 import { supabase } from '@/lib/supabase';
 import { Panel } from '@/features/admin/adminShared';
 import { useIsAdmin } from '@/features/auth/RequireAuth';
-import { FileDownloadList, FileUploader } from '@/features/jobs/JobFileActions';
-import { formatDate, formatDateTime, formatMoney } from '@/features/jobs/jobFormat';
+import { FileDownloadList } from '@/features/jobs/JobFileActions';
+import { formatDateTime, formatMoney } from '@/features/jobs/jobFormat';
 import {
   JOB_STATUSES,
   PAYMENT_METHOD_LABELS,
-  PAYMENT_METHODS,
   type JobEventRow,
   type JobFileRow,
   type JobRow,
   type JobStatus,
-  type PaymentMethod,
-  type PaymentRow,
 } from '@/features/jobs/jobTypes';
 
 interface PanelProps {
@@ -31,7 +28,7 @@ interface PanelProps {
   onChanged: () => void;
 }
 
-async function runRpc(name: string, params: Record<string, unknown>) {
+export async function runRpc(name: string, params: Record<string, unknown>) {
   const { error } = await supabase.rpc(name, params);
   if (error) throw new Error(error.message);
 }
@@ -39,6 +36,15 @@ async function runRpc(name: string, params: Record<string, unknown>) {
 /* ------------------------------------------------------------------ status */
 
 export function StatusPanel({ job, onChanged }: PanelProps) {
+  return (
+    <Panel title="Status">
+      <StatusControl job={job} onChanged={onChanged} />
+    </Panel>
+  );
+}
+
+/** Status select with the Completed confirmation; used by the staff Status panel and inside Job progress. */
+export function StatusControl({ job, onChanged }: PanelProps) {
   const isAdmin = useIsAdmin();
   const statusOptions = JOB_STATUSES.filter((value) => isAdmin || value !== 'Delivered' || job.status === 'Delivered');
   const [status, setStatus] = useState<JobStatus>(job.status);
@@ -65,7 +71,7 @@ export function StatusPanel({ job, onChanged }: PanelProps) {
   };
 
   return (
-    <Panel title="Status">
+    <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
         <div className="flex-1">
           <SelectInput
@@ -105,356 +111,14 @@ export function StatusPanel({ job, onChanged }: PanelProps) {
       <div className="mt-3">
         <NoticeLine notice={notice} />
       </div>
-    </Panel>
-  );
-}
-
-/* --------------------------------------------------------------- quotation */
-
-export function QuotationPanel({ job, onChanged }: PanelProps) {
-  const [amount, setAmount] = useState(job.quote_amount !== null ? String(job.quote_amount) : '');
-  const [notes, setNotes] = useState(job.quote_notes ?? '');
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<Notice>(null);
-  const paid = job.payment_status === 'paid';
-
-  const send = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const value = Number(amount.replace(',', '.'));
-    if (!Number.isFinite(value) || value <= 0) {
-      setNotice({ tone: 'error', text: 'Enter a valid price.' });
-      return;
-    }
-    setBusy(true);
-    setNotice(null);
-    try {
-      await runRpc('admin_send_quotation', { p_job: job.id, p_amount: value, p_currency: 'EUR', p_notes: notes });
-      notify(job.id, 'quotation_sent');
-      setNotice({ tone: 'success', text: 'Quotation sent to the customer.' });
-      onChanged();
-    } catch (error) {
-      setNotice({ tone: 'error', text: errorMessage(error) });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Panel title="Quotation">
-      {job.quoted_at && (
-        <p className="mb-4 text-sm text-neutral-400">
-          Last sent {formatDateTime(job.quoted_at)}: <span className="text-white">{formatMoney(job.quote_amount ?? 0, job.quote_currency)}</span>
-        </p>
-      )}
-      <form onSubmit={send} className="flex flex-col gap-4" noValidate>
-        <TextInput
-          id="quote-amount"
-          label="Price (EUR)"
-          inputMode="decimal"
-          placeholder="e.g. 150.00"
-          value={amount}
-          onChange={(event) => setAmount(event.target.value)}
-          disabled={paid}
-        />
-        <TextArea
-          id="quote-notes"
-          label="Quotation notes"
-          optional
-          hint="Shown to the customer with the price, for example what is included and the expected timing."
-          value={notes}
-          maxLength={3000}
-          onChange={(event) => setNotes(event.target.value)}
-          disabled={paid}
-        />
-        <NoticeLine notice={notice} />
-        <Button type="submit" disabled={busy || paid} className="w-full sm:w-auto sm:self-end">
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
-          {job.quoted_at ? 'Send updated quotation' : 'Send quotation'}
-        </Button>
-        {paid && <p className="text-xs text-neutral-500">This job is paid, so the quotation is locked.</p>}
-      </form>
-    </Panel>
-  );
-}
-
-/* ----------------------------------------------------------------- payment */
-
-export function PaymentPanel({ job, payments, onChanged }: PanelProps & { payments: PaymentRow[] }) {
-  const paid = job.payment_status === 'paid';
-  const [link, setLink] = useState(job.payment_link ?? '');
-  const [linkBusy, setLinkBusy] = useState(false);
-  const [linkNotice, setLinkNotice] = useState<Notice>(null);
-
-  const [amount, setAmount] = useState(job.quote_amount !== null ? String(job.quote_amount) : '');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [method, setMethod] = useState<PaymentMethod>('card_link');
-  const [reference, setReference] = useState('');
-  const [payBusy, setPayBusy] = useState(false);
-  const [payNotice, setPayNotice] = useState<Notice>(null);
-
-  const saveLink = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setLinkBusy(true);
-    setLinkNotice(null);
-    try {
-      await runRpc('admin_set_payment_link', { p_job: job.id, p_link: link });
-      if (link.trim() && job.quote_amount !== null) notify(job.id, 'payment_link');
-      setLinkNotice({ tone: 'success', text: link.trim() ? 'Payment link saved. The customer can now pay from their account.' : 'Payment link removed.' });
-      onChanged();
-    } catch (error) {
-      setLinkNotice({ tone: 'error', text: errorMessage(error) });
-    } finally {
-      setLinkBusy(false);
-    }
-  };
-
-  const paidValue = Number(amount.replace(',', '.'));
-  const paidValueValid = Number.isFinite(paidValue) && paidValue > 0;
-
-  const markPaid = async () => {
-    if (!paidValueValid) {
-      setPayNotice({ tone: 'error', text: 'Enter the amount received.' });
-      return;
-    }
-    const value = paidValue;
-    setPayBusy(true);
-    setPayNotice(null);
-    try {
-      await runRpc('admin_mark_paid', {
-        p_job: job.id,
-        p_amount: value,
-        p_currency: 'EUR',
-        p_method: method,
-        p_reference: reference,
-        p_paid_at: new Date(`${date}T12:00:00`).toISOString(),
-      });
-      setPayNotice({ tone: 'success', text: 'Marked as paid.' });
-      onChanged();
-    } catch (error) {
-      setPayNotice({ tone: 'error', text: errorMessage(error) });
-    } finally {
-      setPayBusy(false);
-    }
-  };
-
-  return (
-    <Panel title="Payment">
-      <div className="flex flex-col gap-6">
-        <p className="text-sm text-neutral-300">
-          {paid ? (
-            <>
-              <span className="font-semibold text-white">Paid</span>
-              {job.paid_at && ` on ${formatDate(job.paid_at)}`}
-              {job.payment_method && ` · ${PAYMENT_METHOD_LABELS[job.payment_method]}`}
-            </>
-          ) : (
-            'Not paid yet.'
-          )}
-        </p>
-
-        {!paid && (
-          <form onSubmit={saveLink} className="flex flex-col gap-3 border-t border-white/[0.08] pt-5" noValidate>
-            <TextInput
-              id="payment-link"
-              label="Payment link"
-              type="url"
-              placeholder="https://"
-              hint="Paste any payment link (card link, payment page). The customer sees a PAY NOW button that opens it in a new tab."
-              value={link}
-              onChange={(event) => setLink(event.target.value)}
-            />
-            <NoticeLine notice={linkNotice} />
-            <Button type="submit" variant="secondary" disabled={linkBusy || link.trim() === (job.payment_link ?? '')} className="w-full sm:w-auto sm:self-end">
-              {linkBusy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-              Save payment link
-            </Button>
-          </form>
-        )}
-
-        {!paid && !job.user_id && job.payment_link && <PaymentLinkShare job={job} link={job.payment_link} />}
-
-        {!paid && (
-          <form onSubmit={(event) => event.preventDefault()} className="flex flex-col gap-4 border-t border-white/[0.08] pt-5" noValidate>
-            <p className="text-sm font-medium text-neutral-200">Mark as paid</p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextInput id="paid-amount" label="Amount (EUR)" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
-              <TextInput id="paid-date" label="Date received" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-              <SelectInput id="paid-method" label="Method" value={method} onChange={(event) => setMethod(event.target.value as PaymentMethod)} options={PAYMENT_METHODS} />
-              <TextInput id="paid-reference" label="Reference" optional value={reference} maxLength={200} onChange={(event) => setReference(event.target.value)} />
-            </div>
-            <NoticeLine notice={payNotice} />
-            <ConfirmButton
-              variant="primary"
-              size="md"
-              busy={payBusy}
-              className="w-full sm:w-auto sm:self-end"
-              message={
-                paidValueValid
-                  ? `Mark ${job.reference} as paid: ${formatMoney(paidValue, 'EUR')}, ${PAYMENT_METHOD_LABELS[method]}?`
-                  : 'Enter the amount received first.'
-              }
-              confirmLabel={paidValueValid ? 'Yes, mark as paid' : 'OK'}
-              onConfirm={markPaid}
-            >
-              Mark as paid
-            </ConfirmButton>
-          </form>
-        )}
-
-        {payments.length > 0 && (
-          <div className="border-t border-white/[0.08] pt-5">
-            <p className="mb-3 text-sm font-medium text-neutral-200">Payments recorded</p>
-            <ul className="flex flex-col gap-2 text-sm">
-              {payments.map((payment) => (
-                <li key={payment.id} className="flex flex-wrap justify-between gap-2 text-neutral-300">
-                  <span>
-                    {formatMoney(payment.amount, payment.currency)} · {PAYMENT_METHOD_LABELS[payment.method] ?? payment.method}
-                    {payment.reference_note && <span className="text-neutral-500"> · {payment.reference_note}</span>}
-                  </span>
-                  <span className="text-neutral-500">{formatDate(payment.paid_at)}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    </Panel>
-  );
-}
-
-/**
- * Guests and customers without an account have no dashboard with a PAY NOW button,
- * so the admin sends the payment link by email, WhatsApp, or copies it.
- */
-function PaymentLinkShare({ job, link }: { job: JobRow; link: string }) {
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<Notice>(null);
-  const email = job.customer_email as string | null;
-  const phone = job.customer_phone;
-  const price = job.quote_amount !== null ? ` The price is ${formatMoney(job.quote_amount, job.quote_currency)}.` : '';
-  const text = `Hello, this is ZEROONEMOD about your file ${job.reference}.${price} You can pay securely here: ${link}`;
-
-  const sendEmail = async () => {
-    setBusy(true);
-    setNotice(null);
-    try {
-      const result = await callFunction<{ sent: boolean }>('notify', { jobId: job.id, event: 'payment_link' });
-      setNotice(
-        result.sent
-          ? { tone: 'success', text: `Payment link emailed to ${email}.` }
-          : { tone: 'error', text: 'The email was not sent (email sending is not set up yet). Use WhatsApp or copy the link.' },
-      );
-    } catch (error) {
-      setNotice({ tone: 'error', text: errorMessage(error) });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const copy = async () => {
-    setNotice((await copyText(text)) ? { tone: 'success', text: 'Message with the payment link copied.' } : { tone: 'error', text: 'Could not copy. Select the link above instead.' });
-  };
-
-  return (
-    <div className="flex flex-col gap-3 border-t border-white/[0.08] pt-5">
-      <p className="text-sm font-medium text-neutral-200">Send the payment link</p>
-      <p className="text-xs leading-relaxed text-neutral-500">
-        {job.job_type === 'guest' ? 'Guests' : 'Customers without an account'} have no dashboard, so send them the link directly.
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {email && (
-          <Button variant="secondary" size="sm" onClick={sendEmail} disabled={busy}>
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Mail className="h-3.5 w-3.5" aria-hidden="true" />}
-            Email link
-          </Button>
-        )}
-        {phone && (
-          <a
-            href={`https://wa.me/${phone.replace(/\D/g, '').replace(/^00/, '')}?text=${encodeURIComponent(text)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={buttonClasses('secondary', 'sm')}
-          >
-            <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" />
-            WhatsApp
-          </a>
-        )}
-        <Button variant="secondary" size="sm" onClick={copy}>
-          <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
-          Copy message
-        </Button>
-      </div>
-      <NoticeLine notice={notice} />
     </div>
-  );
-}
-
-/* ---------------------------------------------------------------- delivery */
-
-export function DeliveryPanel({ job, completed, onChanged }: PanelProps & { completed: JobFileRow[] }) {
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<Notice>(null);
-  const paid = job.payment_status === 'paid';
-  const hasFile = completed.length > 0;
-  const delivered = job.status === 'Delivered';
-
-  const deliver = async () => {
-    setBusy(true);
-    setNotice(null);
-    try {
-      await runRpc('admin_set_job_status', { p_job: job.id, p_status: 'Delivered' });
-      notify(job.id, 'delivered');
-      setNotice({ tone: 'success', text: 'Delivered. The customer has been emailed.' });
-      onChanged();
-    } catch (error) {
-      setNotice({ tone: 'error', text: errorMessage(error) });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const Check = ({ ok, label }: { ok: boolean; label: string }) => (
-    <li className={`flex items-center gap-2 text-sm ${ok ? 'text-white' : 'text-neutral-500'}`}>
-      {ok ? <CheckCircle2 className="h-4 w-4 text-brand-500" aria-hidden="true" /> : <Circle className="h-4 w-4" aria-hidden="true" />}
-      {label}
-    </li>
-  );
-
-  return (
-    <Panel title="Delivery">
-      {delivered ? (
-        <p className="text-sm text-neutral-300">Delivered{job.delivered_at ? ` on ${formatDateTime(job.delivered_at)}` : ''}. The customer can download the completed file.</p>
-      ) : (
-        <div className="flex flex-col gap-4">
-          <ul className="flex flex-col gap-2">
-            <Check ok={paid} label={job.payment_method === 'partner_arrangement' ? 'Paid (partner arrangement)' : 'Marked as paid (or partner arrangement)'} />
-            <Check ok={hasFile} label="Completed file uploaded" />
-          </ul>
-          <NoticeLine notice={notice} />
-          <ConfirmButton
-            variant="primary"
-            size="md"
-            busy={busy}
-            disabled={!paid || !hasFile}
-            className="w-full sm:w-auto sm:self-end"
-            message={`Deliver ${job.reference}? The customer can then download the completed file${job.user_id ? ' and receives an email' : ''}.`}
-            confirmLabel="Yes, deliver"
-            onConfirm={deliver}
-          >
-            <Truck className="h-4 w-4" aria-hidden="true" />
-            Deliver
-          </ConfirmButton>
-        </div>
-      )}
-      {!job.user_id && <SecureLinkActions job={job} completed={completed} ready={paid && hasFile} />}
-    </Panel>
   );
 }
 
 const SECURE_LINK_DAYS = 7;
 
 /** Customers without an account cannot download from a dashboard: send or copy a time-limited link instead. */
-function SecureLinkActions({ job, completed, ready }: { job: JobRow; completed: JobFileRow[]; ready: boolean }) {
+export function SecureLinkActions({ job, completed, ready }: { job: JobRow; completed: JobFileRow[]; ready: boolean }) {
   const [busy, setBusy] = useState<'email' | 'copy' | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const email = job.customer_email as string | null;
@@ -586,18 +250,6 @@ export function FilesPanel({ job, files, onChanged, canManage = true }: PanelPro
         <div className="border-t border-white/[0.08] pt-5">
           <p className="mb-1 text-sm font-medium text-neutral-200">Completed files</p>
           <FileDownloadList files={completed} emptyText="No completed file uploaded yet." showDate />
-          {canManage && (
-          <div className="mt-4">
-            <FileUploader
-              jobId={job.id}
-              reference={job.reference}
-              kind="completed"
-              title="Upload completed file"
-              description="Released to the customer only after payment and delivery."
-              onUploaded={onChanged}
-            />
-          </div>
-          )}
         </div>
         <NoticeLine notice={notice} />
       </div>

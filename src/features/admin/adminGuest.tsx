@@ -11,7 +11,8 @@ import { copyText } from '@/lib/clipboard';
 import { isValidEmail } from '@/lib/requestForms';
 import { supabase } from '@/lib/supabase';
 import { GuestBadge, Panel } from '@/features/admin/adminShared';
-import { ActivityPanel, DeleteJobPanel, DeliveryPanel, FilesPanel, NotesPanel, PaymentPanel, QuotationPanel, StatusPanel } from '@/features/admin/adminJobPanels';
+import { ActivityPanel, DeleteJobPanel, FilesPanel, NotesPanel, StatusPanel } from '@/features/admin/adminJobPanels';
+import { JobWorkflowPanel } from '@/features/admin/JobWorkflowPanel';
 import { formatDateTime } from '@/features/jobs/jobFormat';
 import { useIsAdmin } from '@/features/auth/RequireAuth';
 import { JobVehicleDetails } from '@/features/jobs/JobInfo';
@@ -58,13 +59,10 @@ export function GuestRequestDetail({ job, files, notes, events, payments, onChan
           {isAdmin && <ConvertGuestPanel key={job.updated_at} job={job} onChanged={onChanged} />}
         </div>
         <div className="flex min-w-0 flex-col gap-6">
-          <StatusPanel key={`status-${job.updated_at}`} job={job} onChanged={onChanged} />
-          {isAdmin && (
-            <>
-              <QuotationPanel key={`quote-${job.updated_at}`} job={job} onChanged={onChanged} />
-              <PaymentPanel key={`pay-${job.updated_at}`} job={job} payments={payments} onChanged={onChanged} />
-              <DeliveryPanel job={job} completed={files.filter((f) => f.kind === 'completed')} onChanged={onChanged} />
-            </>
+          {isAdmin ? (
+            <JobWorkflowPanel key={`flow-${job.updated_at}`} job={job} completed={files.filter((f) => f.kind === 'completed')} onChanged={onChanged} />
+          ) : (
+            <StatusPanel key={`status-${job.updated_at}`} job={job} onChanged={onChanged} />
           )}
           <NotesPanel jobId={job.id} notes={notes} onChanged={onChanged} />
           <ActivityPanel events={events} />

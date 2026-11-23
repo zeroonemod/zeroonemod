@@ -8,7 +8,8 @@ import { Panel } from '@/features/admin/adminShared';
 import { GuestRequestDetail } from '@/features/admin/adminGuest';
 import { useIsAdmin } from '@/features/auth/RequireAuth';
 import { useReplyTemplates } from '@/features/admin/adminShared';
-import { ActivityPanel, DeleteJobPanel, DeliveryPanel, FilesPanel, NotesPanel, PaymentPanel, QuotationPanel, StatusPanel } from '@/features/admin/adminJobPanels';
+import { ActivityPanel, DeleteJobPanel, FilesPanel, NotesPanel, StatusPanel } from '@/features/admin/adminJobPanels';
+import { JobWorkflowPanel } from '@/features/admin/JobWorkflowPanel';
 import { Detail, DetailGrid, JobVehicleDetails } from '@/features/jobs/JobInfo';
 import { JobMessages } from '@/features/jobs/JobMessages';
 import {
@@ -112,7 +113,11 @@ export function AdminJobDetail() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-6">
-          <StatusPanel key={`status-${version}`} job={job} onChanged={onChanged} />
+          {isAdmin ? (
+            <JobWorkflowPanel key={`flow-${version}`} job={job} completed={files.filter((f) => f.kind === 'completed')} onChanged={onChanged} />
+          ) : (
+            <StatusPanel key={`status-${version}`} job={job} onChanged={onChanged} />
+          )}
 
           <Panel title="Customer">
             <DetailGrid>
@@ -159,13 +164,6 @@ export function AdminJobDetail() {
         </div>
 
         <div className="flex min-w-0 flex-col gap-6">
-          {isAdmin && (
-            <>
-              <QuotationPanel key={`quote-${version}`} job={job} onChanged={onChanged} />
-              <PaymentPanel key={`pay-${version}`} job={job} payments={payments} onChanged={onChanged} />
-              <DeliveryPanel job={job} completed={files.filter((f) => f.kind === 'completed')} onChanged={onChanged} />
-            </>
-          )}
           <NotesPanel jobId={job.id} notes={notes} onChanged={onChanged} />
           <ActivityPanel events={events} />
           {isAdmin && <DeleteJobPanel job={job} hasPayments={payments.length > 0} />}

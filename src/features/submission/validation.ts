@@ -40,11 +40,10 @@ function validateVehicle(form: WizardForm, errors: FormErrors) {
 
 function validateVehicleExtras(form: WizardForm, errors: FormErrors) {
   const power = form.power.trim().replace(',', '.');
-  if (!power) errors.power = 'Enter the engine power.';
-  else if (!(Number(power) > 0 && Number(power) <= 3000)) errors.power = 'Enter the power as a number, for example 150.';
+  // Power and torque are optional; when given they must be sensible numbers.
+  if (power && !(Number(power) > 0 && Number(power) <= 3000)) errors.power = 'Enter the power as a number, for example 150.';
   const torque = form.torque.trim();
-  if (!torque) errors.torque = 'Enter the torque in Nm.';
-  else if (!(/^\d+$/.test(torque) && Number(torque) > 0 && Number(torque) <= 5000)) errors.torque = 'Enter the torque in Nm, for example 340.';
+  if (torque && !(/^\d+$/.test(torque) && Number(torque) > 0 && Number(torque) <= 5000)) errors.torque = 'Enter the torque in Nm, for example 340.';
   if (!form.gearboxType) errors.gearboxType = 'Choose the gearbox type.';
   if (!form.previouslyModified) errors.previouslyModified = 'Tell us whether the file was modified before.';
 }

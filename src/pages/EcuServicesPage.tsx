@@ -1,4 +1,4 @@
-import { Cpu, Fuel, FileCode, Gauge, RotateCcw, Wind } from 'lucide-react';
+import { Cpu, FileCode, Gauge, RotateCcw, Wind } from 'lucide-react';
 import { ContentPage, NoticeCard, SubmitCta } from '@/components/content/ContentPage';
 import { ServiceGrid, type ServiceItem } from '@/components/content/ServiceList';
 
@@ -30,12 +30,6 @@ const SERVICES: ServiceItem[] = [
     description:
       'Software-side adjustments to emissions systems where they are supported for the specific ECU. Availability depends on the file and local regulations.',
     items: ['DPF and particulate filter strategies', 'AdBlue and SCR strategies', 'EGR strategy adjustments'],
-  },
-  {
-    icon: Fuel,
-    title: 'Fuel system strategies',
-    description:
-      'Targeted software changes to fuel delivery and injection strategies on supported platforms, reviewed against the original calibration.',
   },
   {
     icon: FileCode,

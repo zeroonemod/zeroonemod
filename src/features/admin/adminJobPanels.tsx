@@ -677,6 +677,7 @@ export function DeleteJobPanel({ job, hasPayments }: { job: JobRow; hasPayments:
 const EVENT_LABELS: Record<string, (details: Record<string, unknown>) => string> = {
   submitted: (d) => `Job submitted (${d.files ?? '?'} file${d.files === 1 ? '' : 's'})`,
   status_changed: (d) => `Status changed from ${d.from} to ${d.to}`,
+  messages_deleted: (d) => `Conversation deleted (${d.count} message${d.count === 1 ? '' : 's'})`,
   quotation_sent: (d) => `Quotation sent: ${formatMoney(Number(d.amount), String(d.currency ?? 'EUR'))}`,
   payment_link_updated: (d) => (d.set ? 'Payment link saved' : 'Payment link removed'),
   marked_paid: (d) =>

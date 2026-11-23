@@ -40,7 +40,7 @@ export function useMessageThreads(viewer: 'customer' | 'admin') {
         thread = {
           jobId: row.job_id,
           reference: job.reference,
-          customer: `${job.customer_first_name} ${job.customer_last_name}`,
+          customer: [job.customer_first_name, job.customer_last_name].filter(Boolean).join(' ') || 'Guest',
           vehicle: `${job.vehicle_year} ${job.vehicle_make} ${job.vehicle_model}`,
           lastBody: row.body,
           lastAt: row.created_at,
@@ -67,6 +67,15 @@ export function useMessageThreads(viewer: 'customer' | 'admin') {
   return { threads, error, reload, unreadTotal };
 }
 
+interface ThreadJob {
+  reference: string;
+  customer_first_name: string | null;
+  customer_last_name: string | null;
+  vehicle_year: number;
+  vehicle_make: string;
+  vehicle_model: string;
+}
+
 interface MessageRowWithJob {
   job_id: string;
   sender_role: 'customer' | 'admin';
@@ -75,7 +84,7 @@ interface MessageRowWithJob {
   customer_read_at: string | null;
   admin_read_at: string | null;
   jobs:
-    | { reference: string; customer_first_name: string; customer_last_name: string; vehicle_year: number; vehicle_make: string; vehicle_model: string }
-    | { reference: string; customer_first_name: string; customer_last_name: string; vehicle_year: number; vehicle_make: string; vehicle_model: string }[]
+    | ThreadJob
+    | ThreadJob[]
     | null;
 }

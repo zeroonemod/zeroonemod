@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { formatDateTime } from '@/features/jobs/jobFormat';
 import type { MessageThread } from '@/features/jobs/useMessageThreads';
@@ -7,22 +8,24 @@ interface MessageThreadListProps {
   linkFor: (thread: MessageThread) => string;
   showCustomer?: boolean;
   emptyText: string;
+  /** Optional controls under each thread (outside the link), e.g. the admin's Delete button. */
+  renderActions?: (thread: MessageThread) => ReactNode;
 }
 
-export function MessageThreadList({ threads, linkFor, showCustomer = false, emptyText }: MessageThreadListProps) {
+export function MessageThreadList({ threads, linkFor, showCustomer = false, emptyText, renderActions }: MessageThreadListProps) {
   if (threads.length === 0) {
     return <p className="rounded-xl border border-white/[0.08] bg-surface p-6 text-sm text-neutral-400">{emptyText}</p>;
   }
   return (
     <ul className="flex flex-col gap-3">
       {threads.map((thread) => (
-        <li key={thread.jobId}>
-          <Link
-            to={linkFor(thread)}
-            className={`flex flex-col gap-2 rounded-xl border bg-surface p-5 transition-colors duration-200 hover:border-brand-500/50 ${
-              thread.unread > 0 ? 'border-brand-500/40' : 'border-white/[0.08]'
-            }`}
-          >
+        <li
+          key={thread.jobId}
+          className={`rounded-xl border bg-surface transition-colors duration-200 hover:border-brand-500/50 ${
+            thread.unread > 0 ? 'border-brand-500/40' : 'border-white/[0.08]'
+          }`}
+        >
+          <Link to={linkFor(thread)} className="flex flex-col gap-2 rounded-xl p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="flex items-center gap-2 text-sm font-semibold text-white">
                 {thread.unread > 0 && <span className="h-2 w-2 rounded-full bg-brand-500" aria-hidden="true" />}
@@ -39,6 +42,7 @@ export function MessageThreadList({ threads, linkFor, showCustomer = false, empt
               </span>
             )}
           </Link>
+          {renderActions && <div className="flex justify-end px-5 pb-5">{renderActions(thread)}</div>}
         </li>
       ))}
     </ul>

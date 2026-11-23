@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
+import { Trash2 } from 'lucide-react';
+import { NoticeLine, type Notice } from '@/components/ui/Alert';
+import { ConfirmButton } from '@/components/ui/ConfirmButton';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { SelectInput } from '@/components/ui/Select';
+import { errorMessage } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import { useIsAdmin } from '@/features/auth/RequireAuth';
 import { AdminPageHeader, EmptyRow } from '@/features/admin/adminShared';
 import { MessageThreadList } from '@/features/jobs/MessageThreadList';
 import { useMessageThreads } from '@/features/jobs/useMessageThreads';
@@ -19,7 +24,10 @@ interface ContactMessage {
 
 export function AdminMessagesPage() {
   const [tab, setTab] = useState<'jobs' | 'contact'>('jobs');
-  const { threads, error } = useMessageThreads('admin');
+  const isAdmin = useIsAdmin();
+  const { threads, error, reload } = useMessageThreads('admin');
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<Notice>(null);
   const [contacts, setContacts] = useState<ContactMessage[] | null>(null);
   const [version, setVersion] = useState(0);
 
@@ -37,6 +45,31 @@ export function AdminMessagesPage() {
     setVersion((v) => v + 1);
   };
 
+  const deleteThread = async (jobId: string, reference: string) => {
+    setBusyId(jobId);
+    setNotice(null);
+    const { error: rpcError } = await supabase.rpc('admin_delete_job_messages', { p_job: jobId });
+    if (rpcError) setNotice({ tone: 'error', text: errorMessage(rpcError) });
+    else setNotice({ tone: 'success', text: `Conversation of ${reference} deleted.` });
+    await reload();
+    setBusyId(null);
+  };
+
+  const deleteContact = async (contact: ContactMessage) => {
+    setBusyId(contact.id);
+    setNotice(null);
+    const { error: deleteError } = await supabase.from('contact_messages').delete().eq('id', contact.id);
+    if (deleteError) setNotice({ tone: 'error', text: errorMessage(deleteError) });
+    else setNotice({ tone: 'success', text: `Message from ${contact.name} deleted.` });
+    setVersion((v) => v + 1);
+    setBusyId(null);
+  };
+
+  const showTab = (next: 'jobs' | 'contact') => {
+    setTab(next);
+    setNotice(null);
+  };
+
   const unreadJobs = (threads ?? []).filter((t) => t.unread > 0).length;
   const newContacts = (contacts ?? []).filter((c) => c.status === 'new').length;
   const tabClass = (active: boolean) =>
@@ -47,13 +80,15 @@ export function AdminMessagesPage() {
       <AdminPageHeader title="Messages" description="Customer conversations on jobs and messages from the contact form." />
 
       <div role="tablist" aria-label="Message type" className="flex gap-6 border-b border-white/[0.08]">
-        <button type="button" role="tab" aria-selected={tab === 'jobs'} className={tabClass(tab === 'jobs')} onClick={() => setTab('jobs')}>
+        <button type="button" role="tab" aria-selected={tab === 'jobs'} className={tabClass(tab === 'jobs')} onClick={() => showTab('jobs')}>
           Job messages {unreadJobs > 0 && <span className="ml-1 text-brand-400">({unreadJobs})</span>}
         </button>
-        <button type="button" role="tab" aria-selected={tab === 'contact'} className={tabClass(tab === 'contact')} onClick={() => setTab('contact')}>
+        <button type="button" role="tab" aria-selected={tab === 'contact'} className={tabClass(tab === 'contact')} onClick={() => showTab('contact')}>
           Contact form {newContacts > 0 && <span className="ml-1 text-brand-400">({newContacts})</span>}
         </button>
       </div>
+
+      {notice && <NoticeLine notice={notice} />}
 
       {tab === 'jobs' &&
         (error ? (
@@ -66,6 +101,22 @@ export function AdminMessagesPage() {
             linkFor={(t) => `/admin/jobs/${t.reference}#messages`}
             showCustomer
             emptyText="No job messages yet."
+            renderActions={
+              isAdmin
+                ? (thread) => (
+                    <ConfirmButton
+                      busy={busyId === thread.jobId}
+                      className="sm:max-w-md"
+                      message={`Delete the whole conversation of ${thread.reference} (${thread.total} message${thread.total === 1 ? '' : 's'})? The job stays. This cannot be undone.`}
+                      confirmLabel="Yes, delete messages"
+                      onConfirm={() => deleteThread(thread.jobId, thread.reference)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      Delete
+                    </ConfirmButton>
+                  )
+                : undefined
+            }
           />
         ))}
 
@@ -110,7 +161,21 @@ export function AdminMessagesPage() {
                   </div>
                 </div>
                 <p className="whitespace-pre-wrap break-words text-sm leading-[1.5] text-neutral-300">{contact.message}</p>
-                <p className="text-xs text-neutral-500">{formatDateTime(contact.created_at)}</p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs text-neutral-500">{formatDateTime(contact.created_at)}</p>
+                  {isAdmin && (
+                    <ConfirmButton
+                      busy={busyId === contact.id}
+                      className="sm:max-w-md"
+                      message={`Delete this message from ${contact.name}? This cannot be undone.`}
+                      confirmLabel="Yes, delete"
+                      onConfirm={() => deleteContact(contact)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      Delete
+                    </ConfirmButton>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

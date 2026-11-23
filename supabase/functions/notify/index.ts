@@ -54,8 +54,10 @@ Deno.serve(async (req) => {
       return json(req, { sent: false, reason: 'rate_limited' });
     }
 
-    // Guest requests are handled by phone or email directly; they get no automatic job emails.
-    if (job.job_type === 'guest') return json(req, { sent: false, reason: 'guest_request' });
+    // Guests get only the payment emails (quotation, payment link, download link) when they left an
+    // email address. Status updates and messages are handled by phone or email directly.
+    const GUEST_EVENTS: NotifyEvent[] = ['quotation_sent', 'payment_link', 'download_link'];
+    if (job.job_type === 'guest' && !GUEST_EVENTS.includes(event)) return json(req, { sent: false, reason: 'guest_request' });
 
     const customerEmail = await customerAddress(admin, job.user_id, job.customer_email);
     const toCustomer = event !== 'customer_message' && event !== 'additional_files';
@@ -64,7 +66,7 @@ Deno.serve(async (req) => {
     const hasAccount = Boolean(job.user_id);
     if (!hasAccount && (event === 'admin_message' || event === 'delivered')) return json(req, { sent: false, reason: 'no_account' });
 
-    const hello = `Hello ${job.customer_first_name ?? ''},`;
+    const hello = job.customer_first_name ? `Hello ${job.customer_first_name},` : 'Hello,';
     const addresses = await emailAddresses(admin);
     // Payment-related emails come from billing; everything else to customers from info (support).
     const BILLING_EVENTS: NotifyEvent[] = ['quotation_sent', 'payment_link', 'download_link'];

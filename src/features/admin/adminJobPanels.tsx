@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, Circle, Link2, Loader2, Mail, Send, Trash2, Truck } from 'lucide-react';
+import { CheckCircle2, Circle, Link2, Loader2, Mail, MessageCircle, Send, Trash2, Truck } from 'lucide-react';
 import { NoticeLine, type Notice } from '@/components/ui/Alert';
-import { Button } from '@/components/ui/Button';
+import { Button, buttonClasses } from '@/components/ui/Button';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
 import { TextArea, TextInput } from '@/components/ui/FormField';
 import { SelectInput } from '@/components/ui/Select';
@@ -245,6 +245,8 @@ export function PaymentPanel({ job, payments, onChanged }: PanelProps & { paymen
           </form>
         )}
 
+        {!paid && !job.user_id && job.payment_link && <PaymentLinkShare job={job} link={job.payment_link} />}
+
         {!paid && (
           <form onSubmit={(event) => event.preventDefault()} className="flex flex-col gap-4 border-t border-white/[0.08] pt-5" noValidate>
             <p className="text-sm font-medium text-neutral-200">Mark as paid</p>
@@ -291,6 +293,73 @@ export function PaymentPanel({ job, payments, onChanged }: PanelProps & { paymen
         )}
       </div>
     </Panel>
+  );
+}
+
+/**
+ * Guests and customers without an account have no dashboard with a PAY NOW button,
+ * so the admin sends the payment link by email, WhatsApp, or copies it.
+ */
+function PaymentLinkShare({ job, link }: { job: JobRow; link: string }) {
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<Notice>(null);
+  const email = job.customer_email as string | null;
+  const phone = job.customer_phone;
+  const price = job.quote_amount !== null ? ` The price is ${formatMoney(job.quote_amount, job.quote_currency)}.` : '';
+  const text = `Hello, this is ZEROONEMOD about your file ${job.reference}.${price} You can pay securely here: ${link}`;
+
+  const sendEmail = async () => {
+    setBusy(true);
+    setNotice(null);
+    try {
+      const result = await callFunction<{ sent: boolean }>('notify', { jobId: job.id, event: 'payment_link' });
+      setNotice(
+        result.sent
+          ? { tone: 'success', text: `Payment link emailed to ${email}.` }
+          : { tone: 'error', text: 'The email was not sent (email sending is not set up yet). Use WhatsApp or copy the link.' },
+      );
+    } catch (error) {
+      setNotice({ tone: 'error', text: errorMessage(error) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copy = async () => {
+    setNotice((await copyText(text)) ? { tone: 'success', text: 'Message with the payment link copied.' } : { tone: 'error', text: 'Could not copy. Select the link above instead.' });
+  };
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-white/[0.08] pt-5">
+      <p className="text-sm font-medium text-neutral-200">Send the payment link</p>
+      <p className="text-xs leading-relaxed text-neutral-500">
+        {job.job_type === 'guest' ? 'Guests' : 'Customers without an account'} have no dashboard, so send them the link directly.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {email && (
+          <Button variant="secondary" size="sm" onClick={sendEmail} disabled={busy}>
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Mail className="h-3.5 w-3.5" aria-hidden="true" />}
+            Email link
+          </Button>
+        )}
+        {phone && (
+          <a
+            href={`https://wa.me/${phone.replace(/\D/g, '').replace(/^00/, '')}?text=${encodeURIComponent(text)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonClasses('secondary', 'sm')}
+          >
+            <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" />
+            WhatsApp
+          </a>
+        )}
+        <Button variant="secondary" size="sm" onClick={copy}>
+          <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
+          Copy message
+        </Button>
+      </div>
+      <NoticeLine notice={notice} />
+    </div>
   );
 }
 

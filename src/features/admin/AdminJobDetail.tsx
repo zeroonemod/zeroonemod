@@ -87,7 +87,7 @@ export function AdminJobDetail() {
   const { job, files, payments, notes, events } = bundle;
   const onChanged = () => void refresh();
   if (isGuest(job)) {
-    return <GuestRequestDetail job={job} files={files} notes={notes} events={events} hasPayments={payments.length > 0} onChanged={onChanged} />;
+    return <GuestRequestDetail job={job} files={files} notes={notes} events={events} payments={payments} onChanged={onChanged} />;
   }
   // Remount stateful panels when the job changes so their fields show the saved values.
   const version = job.updated_at;

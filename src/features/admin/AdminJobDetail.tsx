@@ -4,8 +4,10 @@ import { ArrowLeft } from 'lucide-react';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { supabase } from '@/lib/supabase';
-import { Panel, useAdminSettings } from '@/features/admin/adminShared';
+import { Panel } from '@/features/admin/adminShared';
 import { GuestRequestDetail } from '@/features/admin/adminGuest';
+import { useIsAdmin } from '@/features/auth/RequireAuth';
+import { useReplyTemplates } from '@/features/admin/adminShared';
 import { ActivityPanel, DeleteJobPanel, DeliveryPanel, FilesPanel, NotesPanel, PaymentPanel, QuotationPanel, StatusPanel } from '@/features/admin/adminJobPanels';
 import { Detail, DetailGrid, JobVehicleDetails } from '@/features/jobs/JobInfo';
 import { JobMessages } from '@/features/jobs/JobMessages';
@@ -56,7 +58,8 @@ export function AdminJobDetail() {
   const { reference = '' } = useParams();
   const [bundle, setBundle] = useState<JobBundle | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'not_found' | 'error'>('loading');
-  const { settings } = useAdminSettings();
+  const isAdmin = useIsAdmin();
+  const templates = useReplyTemplates();
 
   const refresh = useCallback(async () => {
     const result = await loadBundle(reference);
@@ -127,7 +130,7 @@ export function AdminJobDetail() {
               <Detail label="Customer type" value={job.customer_type === 'workshop' ? 'Workshop / Service' : 'Individual'} />
               <Detail label="Company" value={job.company_name} />
             </DetailGrid>
-            {job.user_id && (
+            {isAdmin && job.user_id && (
               <Link to={`/admin/customers/${job.user_id}`} className="mt-5 inline-block text-sm text-white underline underline-offset-4 hover:text-brand-400">
                 Open customer account
               </Link>
@@ -144,11 +147,11 @@ export function AdminJobDetail() {
             )}
           </Panel>
 
-          <FilesPanel job={job} files={files} onChanged={onChanged} />
+          <FilesPanel job={job} files={files} onChanged={onChanged} canManage={isAdmin} />
 
           <Panel title="Messages" id="messages">
             {job.user_id ? (
-              <JobMessages jobId={job.id} viewer="admin" templates={settings?.templates ?? []} />
+              <JobMessages jobId={job.id} viewer="admin" templates={templates} />
             ) : (
               <p className="text-sm text-neutral-400">This customer has no account, so they cannot read messages here. Contact them by email or phone.</p>
             )}
@@ -156,12 +159,16 @@ export function AdminJobDetail() {
         </div>
 
         <div className="flex min-w-0 flex-col gap-6">
-          <QuotationPanel key={`quote-${version}`} job={job} onChanged={onChanged} />
-          <PaymentPanel key={`pay-${version}`} job={job} payments={payments} onChanged={onChanged} />
-          <DeliveryPanel job={job} completed={files.filter((f) => f.kind === 'completed')} onChanged={onChanged} />
+          {isAdmin && (
+            <>
+              <QuotationPanel key={`quote-${version}`} job={job} onChanged={onChanged} />
+              <PaymentPanel key={`pay-${version}`} job={job} payments={payments} onChanged={onChanged} />
+              <DeliveryPanel job={job} completed={files.filter((f) => f.kind === 'completed')} onChanged={onChanged} />
+            </>
+          )}
           <NotesPanel jobId={job.id} notes={notes} onChanged={onChanged} />
           <ActivityPanel events={events} />
-          <DeleteJobPanel job={job} hasPayments={payments.length > 0} />
+          {isAdmin && <DeleteJobPanel job={job} hasPayments={payments.length > 0} />}
         </div>
       </div>
     </div>

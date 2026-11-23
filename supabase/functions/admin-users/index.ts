@@ -25,6 +25,8 @@ Deno.serve(async (req) => {
         return json(req, await invitePartner(admin, body));
       case 'set_active':
         return json(req, await setActive(admin, body, caller.user.id));
+      case 'create_staff':
+        return json(req, await createStaff(admin, body));
       case 'delete_job':
         return json(req, await deleteJob(admin, body));
       case 'convert_guest':
@@ -129,6 +131,29 @@ async function deleteJob(admin: AdminClient, body: Record<string, unknown>) {
   const { error: deleteError } = await admin.from('jobs').delete().eq('id', jobId);
   if (deleteError) throw deleteError;
   return { ok: true, reference: job.reference, filesRemoved: all.length };
+}
+
+/**
+ * Staff account with a temporary password chosen by the admin. The staff member must choose
+ * their own password at the first login. Access is limited by the database (role 'staff').
+ */
+async function createStaff(admin: AdminClient, body: Record<string, unknown>) {
+  const email = text(body.email, 254)?.toLowerCase();
+  const fullName = text(body.fullName, 160);
+  const password = typeof body.password === 'string' ? body.password : '';
+  if (!email || !EMAIL.test(email) || !fullName) throw new Error('Enter the name and a valid email.');
+  if (password.length < 8 || password.length > 72) throw new Error('The temporary password must have 8 to 72 characters.');
+
+  const { data: existing } = await admin.from('profiles').select('id, role').eq('email', email).maybeSingle();
+  if (existing) throw new Error(`An account already exists for ${email} (${existing.role}). Use a different email for staff.`);
+
+  const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: fullName } });
+  if (error || !data.user) throw new Error(error?.message ?? 'The staff account could not be created.');
+  const { error: profileError } = await admin
+    .from('profiles')
+    .upsert({ id: data.user.id, email, full_name: fullName, role: 'staff', is_active: true, must_change_password: true });
+  if (profileError) throw profileError;
+  return { ok: true, userId: data.user.id };
 }
 
 async function deleteCustomerData(admin: AdminClient, body: Record<string, unknown>, callerId: string) {

@@ -5,7 +5,7 @@ import { CookieBanner } from '@/components/layout/CookieBanner';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { SubmissionFilesProvider } from '@/features/submission/SubmissionFilesContext';
 import { AuthProvider } from '@/features/auth/AuthContext';
-import { RequireAuth } from '@/features/auth/RequireAuth';
+import { AdminOnly, RequireAuth } from '@/features/auth/RequireAuth';
 
 /** Lazy-loads a named export so each route ships as its own small chunk. */
 function page<K extends string>(loader: () => Promise<Record<K, ComponentType>>, name: K) {
@@ -80,17 +80,17 @@ export default function App() {
               {/* Partners now use the same 3-step form as everyone; keep the old address working. */}
               <Route path="/dashboard/submit" element={<Navigate to="/submit" replace />} />
 
-              <Route path="/admin" element={<RequireAuth adminOnly><AdminLayout /></RequireAuth>}>
+              <Route path="/admin" element={<RequireAuth access="team"><AdminLayout /></RequireAuth>}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="jobs" element={<AdminJobsPage />} />
                 <Route path="jobs/:reference" element={<AdminJobDetail />} />
-                <Route path="customers" element={<AdminCustomersPage />} />
-                <Route path="customers/:id" element={<AdminPersonDetail kind="customer" />} />
-                <Route path="partners" element={<AdminPartnersPage />} />
-                <Route path="partners/:id" element={<AdminPersonDetail kind="partner" />} />
+                <Route path="customers" element={<AdminOnly><AdminCustomersPage /></AdminOnly>} />
+                <Route path="customers/:id" element={<AdminOnly><AdminPersonDetail kind="customer" /></AdminOnly>} />
+                <Route path="partners" element={<AdminOnly><AdminPartnersPage /></AdminOnly>} />
+                <Route path="partners/:id" element={<AdminOnly><AdminPersonDetail kind="partner" /></AdminOnly>} />
                 <Route path="messages" element={<AdminMessagesPage />} />
-                <Route path="faq" element={<AdminFaqPage />} />
-                <Route path="settings" element={<AdminSettingsPage />} />
+                <Route path="faq" element={<AdminOnly><AdminFaqPage /></AdminOnly>} />
+                <Route path="settings" element={<AdminOnly><AdminSettingsPage /></AdminOnly>} />
               </Route>
 
               <Route path="*" element={<NotFoundPage />} />

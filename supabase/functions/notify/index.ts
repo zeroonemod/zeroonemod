@@ -46,8 +46,11 @@ Deno.serve(async (req) => {
     if (!job) return json(req, { error: 'Job not found' }, 404);
 
     const isAdmin = caller.role === 'admin';
+    // Staff may trigger the emails for their own actions: status changes and message replies.
+    const STAFF_EVENTS: NotifyEvent[] = ['status_changed', 'admin_message'];
+    const isTeamAllowed = isAdmin || (caller.role === 'staff' && STAFF_EVENTS.includes(event));
     const isOwner = job.user_id === caller.user.id;
-    if ((ADMIN_EVENTS as readonly string[]).includes(event) ? !isAdmin : !isOwner) {
+    if ((ADMIN_EVENTS as readonly string[]).includes(event) ? !isTeamAllowed : !isOwner) {
       return json(req, { error: 'Not allowed' }, 403);
     }
     if (await isRateLimited(admin, `notify:${caller.user.id}:${event}`, 30, 3600)) {

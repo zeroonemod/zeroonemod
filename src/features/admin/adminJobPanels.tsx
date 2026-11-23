@@ -11,6 +11,7 @@ import { copyText } from '@/lib/clipboard';
 import { JOB_FILES_BUCKET } from '@/lib/storagePaths';
 import { supabase } from '@/lib/supabase';
 import { Panel } from '@/features/admin/adminShared';
+import { useIsAdmin } from '@/features/auth/RequireAuth';
 import { FileDownloadList, FileUploader } from '@/features/jobs/JobFileActions';
 import { formatDate, formatDateTime, formatMoney } from '@/features/jobs/jobFormat';
 import {
@@ -38,6 +39,8 @@ async function runRpc(name: string, params: Record<string, unknown>) {
 /* ------------------------------------------------------------------ status */
 
 export function StatusPanel({ job, onChanged }: PanelProps) {
+  const isAdmin = useIsAdmin();
+  const statusOptions = JOB_STATUSES.filter((value) => isAdmin || value !== 'Delivered' || job.status === 'Delivered');
   const [status, setStatus] = useState<JobStatus>(job.status);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
@@ -68,7 +71,7 @@ export function StatusPanel({ job, onChanged }: PanelProps) {
             label="Job status"
             value={status}
             onChange={(event) => setStatus(event.target.value as JobStatus)}
-            options={JOB_STATUSES.map((value) => ({ value, label: value }))}
+            options={statusOptions.map((value) => ({ value, label: value }))}
           />
         </div>
         <Button onClick={save} disabled={busy || status === job.status}>
@@ -494,7 +497,7 @@ function SecureLinkActions({ job, completed, ready }: { job: JobRow; completed: 
 
 /* ------------------------------------------------------------------- files */
 
-export function FilesPanel({ job, files, onChanged }: PanelProps & { files: JobFileRow[] }) {
+export function FilesPanel({ job, files, onChanged, canManage = true }: PanelProps & { files: JobFileRow[]; canManage?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const originals = files.filter((f) => f.kind === 'original');
@@ -525,7 +528,7 @@ export function FilesPanel({ job, files, onChanged }: PanelProps & { files: JobF
     <Panel
       title="Files"
       actions={
-        files.length > 0 ? (
+        canManage && files.length > 0 ? (
           <ConfirmButton
             variant="ghost"
             busy={busy}
@@ -560,6 +563,7 @@ export function FilesPanel({ job, files, onChanged }: PanelProps & { files: JobF
         <div className="border-t border-white/[0.08] pt-5">
           <p className="mb-1 text-sm font-medium text-neutral-200">Completed files</p>
           <FileDownloadList files={completed} emptyText="No completed file uploaded yet." showDate />
+          {canManage && (
           <div className="mt-4">
             <FileUploader
               jobId={job.id}
@@ -570,6 +574,7 @@ export function FilesPanel({ job, files, onChanged }: PanelProps & { files: JobF
               onUploaded={onChanged}
             />
           </div>
+          )}
         </div>
         <NoticeLine notice={notice} />
       </div>

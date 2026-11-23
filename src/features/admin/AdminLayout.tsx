@@ -7,13 +7,13 @@ import { useDocumentMeta } from '@/lib/useDocumentMeta';
 import { useMessageThreads } from '@/features/jobs/useMessageThreads';
 
 const ADMIN_NAV = [
-  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/admin/jobs', label: 'Jobs', icon: Briefcase, end: false },
-  { to: '/admin/customers', label: 'Customers', icon: Users, end: false },
-  { to: '/admin/partners', label: 'Partners', icon: Handshake, end: false },
-  { to: '/admin/messages', label: 'Messages', icon: MessageSquare, end: false },
-  { to: '/admin/faq', label: 'FAQ', icon: HelpCircle, end: false },
-  { to: '/admin/settings', label: 'Settings', icon: Settings, end: false },
+  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true, staff: true },
+  { to: '/admin/jobs', label: 'Jobs', icon: Briefcase, end: false, staff: true },
+  { to: '/admin/customers', label: 'Customers', icon: Users, end: false, staff: false },
+  { to: '/admin/partners', label: 'Partners', icon: Handshake, end: false, staff: false },
+  { to: '/admin/messages', label: 'Messages', icon: MessageSquare, end: false, staff: true },
+  { to: '/admin/faq', label: 'FAQ', icon: HelpCircle, end: false, staff: false },
+  { to: '/admin/settings', label: 'Settings', icon: Settings, end: false, staff: false },
 ];
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -24,7 +24,9 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 export function AdminLayout() {
   useDocumentMeta({ title: 'Admin | ZEROONEMOD', description: 'ZEROONEMOD admin panel.', noindex: true });
   const { unreadTotal } = useMessageThreads('admin');
-  const { signOut } = useAuth();
+  const { signOut, profile } = useAuth();
+  const isAdmin = profile?.role === 'admin';
+  const nav = ADMIN_NAV.filter((item) => isAdmin || item.staff);
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -44,7 +46,7 @@ export function AdminLayout() {
           </Link>
           <div className="flex shrink-0 items-center gap-3">
             <span className="hidden shrink-0 whitespace-nowrap rounded-full border border-white/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 sm:inline-block lg:inline-block">
-              Admin
+              {isAdmin ? 'Admin' : 'Staff'}
             </span>
             <button
               type="button"
@@ -60,7 +62,7 @@ export function AdminLayout() {
         </div>
         <nav aria-label="Admin" className="hidden px-3 lg:flex lg:flex-1 lg:flex-col lg:px-4 lg:pb-0">
           <ul className="flex flex-col gap-1">
-            {ADMIN_NAV.map((item) => {
+            {nav.map((item) => {
               const Icon = item.icon;
               return (
                 <li key={item.to}>
@@ -114,7 +116,7 @@ export function AdminLayout() {
             </div>
             <nav aria-label="Admin" className="flex-1 overflow-y-auto px-3">
               <ul className="flex flex-col gap-1">
-                {ADMIN_NAV.map((item) => {
+                {nav.map((item) => {
                   const Icon = item.icon;
                   return (
                     <li key={item.to}>

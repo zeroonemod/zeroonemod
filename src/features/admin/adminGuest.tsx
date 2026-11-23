@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase';
 import { GuestBadge, Panel } from '@/features/admin/adminShared';
 import { ActivityPanel, DeleteJobPanel, DeliveryPanel, FilesPanel, NotesPanel, PaymentPanel, QuotationPanel, StatusPanel } from '@/features/admin/adminJobPanels';
 import { formatDateTime } from '@/features/jobs/jobFormat';
+import { useIsAdmin } from '@/features/auth/RequireAuth';
 import { JobVehicleDetails } from '@/features/jobs/JobInfo';
 import type { JobEventRow, JobFileRow, JobRow, PaymentRow } from '@/features/jobs/jobTypes';
 import { CUSTOMER_TYPE_OPTIONS, FUEL_OPTIONS, SERVICE_OPTIONS } from '@/features/submission/types';
@@ -28,6 +29,7 @@ interface GuestRequestDetailProps {
 
 /** Admin page for a guest request: contact, vehicle, files, quotation, payment link, delivery, notes, log and conversion. */
 export function GuestRequestDetail({ job, files, notes, events, payments, onChanged }: GuestRequestDetailProps) {
+  const isAdmin = useIsAdmin();
   return (
     <div className="flex flex-col gap-8">
       <Link to="/admin/jobs" className="inline-flex w-fit items-center gap-2 text-sm text-neutral-400 transition-colors hover:text-white">
@@ -52,17 +54,21 @@ export function GuestRequestDetail({ job, files, notes, events, payments, onChan
               <JobVehicleDetails job={job} />
             </Panel>
           )}
-          <FilesPanel job={job} files={files} onChanged={onChanged} />
-          <ConvertGuestPanel key={job.updated_at} job={job} onChanged={onChanged} />
+          <FilesPanel job={job} files={files} onChanged={onChanged} canManage={isAdmin} />
+          {isAdmin && <ConvertGuestPanel key={job.updated_at} job={job} onChanged={onChanged} />}
         </div>
         <div className="flex min-w-0 flex-col gap-6">
           <StatusPanel key={`status-${job.updated_at}`} job={job} onChanged={onChanged} />
-          <QuotationPanel key={`quote-${job.updated_at}`} job={job} onChanged={onChanged} />
-          <PaymentPanel key={`pay-${job.updated_at}`} job={job} payments={payments} onChanged={onChanged} />
-          <DeliveryPanel job={job} completed={files.filter((f) => f.kind === 'completed')} onChanged={onChanged} />
+          {isAdmin && (
+            <>
+              <QuotationPanel key={`quote-${job.updated_at}`} job={job} onChanged={onChanged} />
+              <PaymentPanel key={`pay-${job.updated_at}`} job={job} payments={payments} onChanged={onChanged} />
+              <DeliveryPanel job={job} completed={files.filter((f) => f.kind === 'completed')} onChanged={onChanged} />
+            </>
+          )}
           <NotesPanel jobId={job.id} notes={notes} onChanged={onChanged} />
           <ActivityPanel events={events} />
-          <DeleteJobPanel job={job} hasPayments={payments.length > 0} />
+          {isAdmin && <DeleteJobPanel job={job} hasPayments={payments.length > 0} />}
         </div>
       </div>
     </div>

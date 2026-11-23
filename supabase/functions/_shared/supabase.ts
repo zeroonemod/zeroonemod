@@ -10,7 +10,7 @@ export function adminClient(): AdminClient {
 
 export interface Caller {
   user: User;
-  role: 'customer' | 'partner' | 'admin';
+  role: 'customer' | 'partner' | 'staff' | 'admin';
   isActive: boolean;
 }
 
@@ -24,7 +24,8 @@ export async function getCaller(admin: AdminClient, req: Request): Promise<Calle
   let role = (profile?.role as Caller['role']) ?? 'customer';
   // Admin rights also need two-step verification when it is switched on. The database decides
   // (public.is_admin), using the caller's own token so its login level (aal) is taken into account.
-  if (role === 'admin' && !(await callerIsAdmin(token))) role = 'customer';
+  if (role === 'admin' && !(await callerCheck(token, 'is_admin'))) role = 'customer';
+  if (role === 'staff' && !(await callerCheck(token, 'is_team'))) role = 'customer';
   return {
     user: data.user,
     role,
@@ -32,15 +33,15 @@ export async function getCaller(admin: AdminClient, req: Request): Promise<Calle
   };
 }
 
-async function callerIsAdmin(token: string): Promise<boolean> {
+async function callerCheck(token: string, fn: 'is_admin' | 'is_team'): Promise<boolean> {
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
   if (!anonKey) return false;
   const asCaller = createClient(Deno.env.get('SUPABASE_URL')!, anonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
-  const { data, error } = await asCaller.rpc('is_admin');
-  if (error) console.error('is_admin check failed', error.message);
+  const { data, error } = await asCaller.rpc(fn);
+  if (error) console.error(`${fn} check failed`, error.message);
   return data === true;
 }
 

@@ -8,6 +8,7 @@ export interface AccountProfile {
   role: AccountRole;
   email: string | null;
   is_active: boolean;
+  must_change_password?: boolean;
   full_name: string | null;
   company_name: string | null;
   country: string | null;
@@ -30,7 +31,7 @@ export const AuthContext = createContext<AuthState | null>(null);
 
 type ProfileResult = { ok: true; profile: AccountProfile } | { ok: false };
 
-const PROFILE_COLUMNS = 'id, role, email, is_active, full_name, company_name, country, phone, customer_type';
+const PROFILE_COLUMNS = 'id, role, email, is_active, must_change_password, full_name, company_name, country, phone, customer_type';
 
 async function fetchProfile(userId: string): Promise<ProfileResult> {
   const { data, error } = await supabase

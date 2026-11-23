@@ -67,10 +67,21 @@ export function useAdminSettings() {
   return { settings, error, reload };
 }
 
+/** Reply templates for the message box. Works for admin and staff. */
+export function useReplyTemplates(): MessageTemplate[] {
+  const [templates, setTemplates] = useState<MessageTemplate[]>([]);
+  useEffect(() => {
+    supabase.rpc('team_reply_templates').then(({ data }) => {
+      if (Array.isArray(data)) setTemplates(data as MessageTemplate[]);
+    });
+  }, []);
+  return templates;
+}
+
 export interface ProfileRow {
   id: string;
   email: string | null;
-  role: 'customer' | 'partner' | 'admin';
+  role: 'customer' | 'partner' | 'staff' | 'admin';
   full_name: string | null;
   company_name: string | null;
   customer_type: string | null;

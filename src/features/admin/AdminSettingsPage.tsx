@@ -14,6 +14,7 @@ import { useAdminJobs } from '@/features/admin/useAdminJobs';
 import { formatDate } from '@/features/jobs/jobFormat';
 import { useAuth } from '@/features/auth/useAuth';
 import { ChangePasswordForm } from '@/features/auth/ChangePasswordForm';
+import { TeamPanel } from '@/features/admin/TeamPanel';
 import { TwoFactorSettings } from '@/features/auth/TwoFactorSettings';
 import type { MessageTemplate } from '@/features/jobs/JobMessages';
 
@@ -35,8 +36,9 @@ export function AdminSettingsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <AdminPageHeader title="Settings" description="Your account, email addresses, file retention, reply templates, GDPR requests and exports." />
+      <AdminPageHeader title="Settings" description="Your account, team, email addresses, file retention, reply templates, GDPR requests and exports." />
       <AccountPanel />
+      <TeamPanel />
       <EmailSettings settings={settings} onSaved={reload} />
       <div className="grid gap-6 xl:grid-cols-2">
         <GeneralSettings initialDays={settings.retention_days} initialAuto={settings.auto_delete_enabled} onSaved={reload} />

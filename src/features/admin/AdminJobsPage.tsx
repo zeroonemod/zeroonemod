@@ -11,6 +11,7 @@ import { downloadCsv } from '@/lib/csv';
 import { supabase } from '@/lib/supabase';
 import { AdminPageHeader, EmptyRow, GuestBadge } from '@/features/admin/adminShared';
 import { useAdminJobs } from '@/features/admin/useAdminJobs';
+import { useIsAdmin } from '@/features/auth/RequireAuth';
 import { formatDate, formatMoney } from '@/features/jobs/jobFormat';
 import {
   contactLabel,
@@ -112,6 +113,7 @@ export async function exportPaymentsCsv() {
 
 export function AdminJobsPage() {
   const { jobs, error } = useAdminJobs();
+  const isAdmin = useIsAdmin();
   const navigate = useNavigate();
   const deletedRef = (useLocation().state as { deleted?: string } | null)?.deleted;
   const [query, setQuery] = useState('');
@@ -146,6 +148,7 @@ export function AdminJobsPage() {
         title="Jobs"
         description={`${jobs.length} job${jobs.length === 1 ? '' : 's'} in total.`}
         actions={
+          isAdmin && (
           <>
             <Button variant="secondary" size="sm" onClick={() => exportJobsCsv(visible)} disabled={visible.length === 0}>
               <Download className="h-4 w-4" aria-hidden="true" />
@@ -160,6 +163,7 @@ export function AdminJobsPage() {
               Export payments CSV
             </Button>
           </>
+          )
         }
       />
       {exportError && <p role="alert" className="text-sm text-red-400">{exportError}</p>}
@@ -170,7 +174,7 @@ export function AdminJobsPage() {
           <SearchInput id="admin-job-search" label="Search" placeholder="Reference, customer, email, phone, vehicle or VIN" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
         <SelectInput id="admin-job-status" label="Status" value={status} onChange={(e) => setStatus(e.target.value)} options={[{ value: 'all', label: 'All statuses' }, ...JOB_STATUSES.map((s) => ({ value: s, label: s }))]} />
-        <SelectInput id="admin-job-payment" label="Payment" value={payment} onChange={(e) => setPayment(e.target.value)} options={[{ value: 'all', label: 'All' }, { value: 'paid', label: 'Paid' }, { value: 'not_paid', label: 'Not paid' }]} />
+        {isAdmin && <SelectInput id="admin-job-payment" label="Payment" value={payment} onChange={(e) => setPayment(e.target.value)} options={[{ value: 'all', label: 'All' }, { value: 'paid', label: 'Paid' }, { value: 'not_paid', label: 'Not paid' }]} />}
         <SelectInput id="admin-job-type" label="Type" value={type} onChange={(e) => setType(e.target.value)} options={[{ value: 'all', label: 'All types' }, { value: 'customer', label: 'Customer jobs' }, { value: 'guest', label: 'Guest requests' }]} />
         <SelectInput id="admin-job-unit" label="Control unit" value={unit} onChange={(e) => setUnit(e.target.value)} options={[{ value: 'all', label: 'ECU and TCU' }, { value: 'ECU', label: 'ECU' }, { value: 'TCU', label: 'TCU' }]} />
         <SelectInput id="admin-job-sort" label="Sort" value={sort} onChange={(e) => setSort(e.target.value as SortKey)} options={SORTS} />
@@ -190,8 +194,8 @@ export function AdminJobsPage() {
                   <th scope="col" className="px-4 py-3 font-medium">Customer</th>
                   <th scope="col" className="px-4 py-3 font-medium">Vehicle</th>
                   <th scope="col" className="px-4 py-3 font-medium">Service</th>
-                  <th scope="col" className="px-4 py-3 font-medium">Quote</th>
-                  <th scope="col" className="px-4 py-3 font-medium">Payment</th>
+                  {isAdmin && <th scope="col" className="px-4 py-3 font-medium">Quote</th>}
+                  {isAdmin && <th scope="col" className="px-4 py-3 font-medium">Payment</th>}
                   <th scope="col" className="px-4 py-3 font-medium">Status</th>
                 </tr>
               </thead>
@@ -217,10 +221,12 @@ export function AdminJobsPage() {
                     <td className="px-4 py-3 text-neutral-300">
                       {isGuest(job) ? '-' : `${job.file_type} · ${SERVICE_LABELS[job.requested_service] ?? job.requested_service}`}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-neutral-300">{job.quote_amount !== null ? formatMoney(job.quote_amount, job.quote_currency) : '-'}</td>
-                    <td className="px-4 py-3">
-                      <span className={job.payment_status === 'paid' ? 'text-white' : 'text-neutral-500'}>{job.payment_status === 'paid' ? 'Paid' : 'Not paid'}</span>
-                    </td>
+                    {isAdmin && <td className="whitespace-nowrap px-4 py-3 text-neutral-300">{job.quote_amount !== null ? formatMoney(job.quote_amount, job.quote_currency) : '-'}</td>}
+                    {isAdmin && (
+                      <td className="px-4 py-3">
+                        <span className={job.payment_status === 'paid' ? 'text-white' : 'text-neutral-500'}>{job.payment_status === 'paid' ? 'Paid' : 'Not paid'}</span>
+                      </td>
+                    )}
                     <td className="px-4 py-3">
                       <StatusBadge status={job.status} />
                     </td>
@@ -255,8 +261,8 @@ export function AdminJobsPage() {
                     </p>
                   )}
                   <p className="text-xs text-neutral-500">
-                    {formatDate(job.created_at)} · {job.quote_amount !== null ? formatMoney(job.quote_amount, job.quote_currency) : 'No quote'} ·{' '}
-                    {job.payment_status === 'paid' ? 'Paid' : 'Not paid'}
+                    {formatDate(job.created_at)}
+                    {isAdmin && ` · ${job.quote_amount !== null ? formatMoney(job.quote_amount, job.quote_currency) : 'No quote'} · ${job.payment_status === 'paid' ? 'Paid' : 'Not paid'}`}
                   </p>
                 </Link>
               </li>

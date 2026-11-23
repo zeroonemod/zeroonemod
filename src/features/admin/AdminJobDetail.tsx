@@ -98,7 +98,7 @@ export function AdminJobDetail() {
 
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex min-w-0 flex-col gap-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-400">Job</p>
+          <p className="eyebrow">Job</p>
           <h1 className="text-3xl font-semibold leading-[1.2] sm:text-4xl">{job.reference}</h1>
           <p className="text-sm text-neutral-400">
             {customerName(job)} · {vehicleLabel(job)} · {job.file_type} · {SERVICE_LABELS[job.requested_service] ?? job.requested_service}

@@ -50,3 +50,10 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+@layer components {
+  /* Red uppercase section label above headings (Services, Why ZEROONEMOD, How it works...). */
+  .eyebrow {
+    @apply text-sm font-bold uppercase tracking-[0.18em] text-brand-400 sm:text-[15px];
+  }
+}

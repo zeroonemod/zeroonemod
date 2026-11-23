@@ -21,7 +21,7 @@ export function ContentPage({ label, title, intro, description, children }: Cont
     <PageLayout>
       <div className="mx-auto flex max-w-7xl flex-col gap-14 px-5 py-16 sm:px-8 sm:py-24">
         <header className="flex max-w-3xl flex-col gap-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-400">{label}</p>
+          <p className="eyebrow">{label}</p>
           <h1 className="text-4xl font-bold leading-[1.2] tracking-tight sm:text-5xl">{title}</h1>
           {intro && <p className="text-base leading-[1.5] text-neutral-400 sm:text-lg">{intro}</p>}
         </header>

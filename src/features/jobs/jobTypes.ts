@@ -19,6 +19,14 @@ export const SERVICE_LABELS: Record<string, string> = {
   not_sure: 'Not sure yet',
 };
 
+export const GEARBOX_LABELS: Record<string, string> = {
+  manual: 'Manual',
+  automatic: 'Automatic',
+  dual_clutch: 'Dual-clutch (DSG/DCT)',
+  cvt: 'CVT',
+  other: 'Other',
+};
+
 export const PAYMENT_METHODS = [
   { value: 'card_link', label: 'Card link' },
   { value: 'bank_transfer', label: 'Bank transfer' },
@@ -56,6 +64,11 @@ export interface JobRow {
   vehicle_engine: string;
   vehicle_fuel_type: string;
   vehicle_vin: string;
+  vehicle_power: number | null;
+  vehicle_power_unit: 'HP' | 'kW' | null;
+  vehicle_torque_nm: number | null;
+  gearbox_type: string | null;
+  file_previously_modified: boolean | null;
   ecu_manufacturer: string | null;
   ecu_hardware_number: string | null;
   ecu_software_number: string | null;
@@ -75,12 +88,12 @@ export interface JobRow {
 }
 
 export const JOB_COLUMNS =
-  'id, reference, user_id, job_type, status, file_type, requested_service, service_comments, customer_type, customer_first_name, customer_last_name, customer_email, customer_country, customer_phone, company_name, vehicle_make, vehicle_model, vehicle_year, vehicle_engine, vehicle_fuel_type, vehicle_vin, ecu_manufacturer, ecu_hardware_number, ecu_software_number, ecu_identification_numbers, quote_amount, quote_currency, quote_notes, quoted_at, payment_link, payment_status, payment_method, paid_at, delivered_at, files_deleted_at, created_at, updated_at';
+  'id, reference, user_id, job_type, status, file_type, requested_service, service_comments, customer_type, customer_first_name, customer_last_name, customer_email, customer_country, customer_phone, company_name, vehicle_make, vehicle_model, vehicle_year, vehicle_engine, vehicle_fuel_type, vehicle_vin, vehicle_power, vehicle_power_unit, vehicle_torque_nm, gearbox_type, file_previously_modified, ecu_manufacturer, ecu_hardware_number, ecu_software_number, ecu_identification_numbers, quote_amount, quote_currency, quote_notes, quoted_at, payment_link, payment_status, payment_method, paid_at, delivered_at, files_deleted_at, created_at, updated_at';
 
 export interface JobFileRow {
   id: string;
   job_id: string;
-  kind: 'original' | 'additional' | 'completed';
+  kind: 'original' | 'additional' | 'completed' | 'photo';
   file_name: string;
   storage_path: string;
   size_bytes: number;

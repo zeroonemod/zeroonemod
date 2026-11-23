@@ -1,22 +1,14 @@
-// Creates a job from the submission wizard (guests and signed-in customers or partners).
-// Files are uploaded by the browser into pending/<draftId>/ first, then moved here into <reference>/original/.
+// Creates a job from the submission wizard for signed-in customers and partners, and for visitors
+// who choose the account path (an account is created or linked at submission).
+// Files are uploaded by the browser into pending/<draftId>/ first, then moved into <reference>/original/
+// (and hardware photos into <reference>/photos/).
 import { clientIp, EMAIL, json, oneOf, optionalText, preflight, readJson, siteUrl, text } from '../_shared/http.ts';
 import { adminClient, type AdminClient, getCaller, isRateLimited, logEvent, notificationEmail } from '../_shared/supabase.ts';
 import { adminJobUrl, jobUrl, sendEmail } from '../_shared/email.ts';
 import { attachOriginals, DRAFT_ID, parseFiles, pendingFilesPresent } from '../_shared/files.ts';
+import { attachPhotos, parseJobDetails, parsePhotos, vehicleSummary } from '../_shared/jobDetails.ts';
 
-const FILE_TYPES = ['ECU', 'TCU'] as const;
-const SERVICES = ['stage1_calibration', 'original_restoration', 'decoding', 'other_modification', 'not_sure'] as const;
-const SERVICE_LABELS: Record<string, string> = {
-  stage1_calibration: 'Stage 1 calibration',
-  original_restoration: 'Original file restoration',
-  decoding: 'Decoding (DPF, AdBlue, etc.)',
-  other_modification: 'Other supported modification',
-  not_sure: 'Not sure',
-};
 const CUSTOMER_TYPES = ['individual', 'workshop'] as const;
-const FUEL_TYPES = ['Petrol', 'Diesel', 'Hybrid', 'Other'] as const;
-const VIN = /^[A-HJ-NPR-Z0-9]{17}$/;
 const INVALID = 'Some details are missing or invalid. Please check the form and try again.';
 
 type AccountStatus = 'signed_in' | 'created' | 'invited' | 'exists' | 'unavailable';
@@ -45,46 +37,29 @@ Deno.serve(async (req) => {
 
     const draftId = typeof body.draftId === 'string' ? body.draftId : '';
     const files = parseFiles(body.files);
-    const vehicle = (body.vehicle ?? {}) as Record<string, unknown>;
-    const ecu = (body.ecu ?? {}) as Record<string, unknown>;
+    const photos = parsePhotos(body.photos);
+    const details = parseJobDetails(body);
     const customer = (body.customer ?? {}) as Record<string, unknown>;
 
-    const fileType = oneOf(body.fileType, FILE_TYPES);
-    const requestedService = oneOf(body.requestedService, SERVICES);
     const customerType = caller?.role === 'partner' ? 'workshop' : oneOf(customer.customerType, CUSTOMER_TYPES);
-    const fuelType = oneOf(vehicle.fuelType, FUEL_TYPES);
     const email = (caller?.user.email ?? (typeof customer.email === 'string' ? customer.email : '')).trim().toLowerCase();
-    const year = Number(vehicle.year);
-    const currentYear = new Date().getFullYear();
-    const make = text(vehicle.make, 60);
-    const model = text(vehicle.model, 60);
-    const engine = text(vehicle.engine, 80);
-    const vin = typeof vehicle.vin === 'string' ? vehicle.vin.trim().toUpperCase() : '';
-    const manufacturer = optionalText(ecu.manufacturer, 80);
-    const hardwareNumber = optionalText(ecu.hardwareNumber, 80);
-    const softwareNumber = optionalText(ecu.softwareNumber, 80);
-    const identificationNumbers = optionalText(ecu.identificationNumbers, 300);
     const firstName = text(customer.firstName, 80);
     const lastName = text(customer.lastName, 80);
     const country = text(customer.country, 80);
     const companyName = optionalText(customer.companyName, 120);
     const phone = optionalText(customer.phone, 30);
-    const comments = optionalText(body.serviceComments, 1000);
     const password = !caller && typeof body.password === 'string' && body.password !== '' ? body.password : null;
 
     const invalid =
-      !DRAFT_ID.test(draftId) || !files || !fileType || !requestedService || !customerType || !fuelType ||
-      !make || !model || !engine || !VIN.test(vin) ||
-      !Number.isInteger(year) || year < 1950 || year > currentYear + 1 ||
-      manufacturer === undefined || hardwareNumber === undefined || softwareNumber === undefined ||
-      identificationNumbers === undefined || companyName === undefined || phone === undefined || comments === undefined ||
+      !DRAFT_ID.test(draftId) || !files || !photos || !details || !customerType ||
+      companyName === undefined || phone === undefined ||
       !firstName || !lastName || !EMAIL.test(email) || email.length > 254 || !country ||
       (customerType === 'workshop' && !companyName) ||
       body.privacyConsent !== true ||
       (password !== null && (password.length < 8 || password.length > 72));
-    if (invalid) return json(req, { error: INVALID }, 400);
+    if (invalid || !files || !photos || !details) return json(req, { error: INVALID }, 400);
 
-    if (!(await pendingFilesPresent(admin, draftId, files))) {
+    if (!(await pendingFilesPresent(admin, draftId, [...files, ...photos]))) {
       return json(req, { error: 'Some files did not finish uploading. Please upload them again.' }, 400);
     }
 
@@ -92,9 +67,7 @@ Deno.serve(async (req) => {
       .from('jobs')
       .insert({
         user_id: caller?.user.id ?? null,
-        file_type: fileType,
-        requested_service: requestedService,
-        service_comments: comments,
+        ...details,
         customer_type: customerType,
         customer_first_name: firstName,
         customer_last_name: lastName,
@@ -102,16 +75,6 @@ Deno.serve(async (req) => {
         customer_country: country,
         customer_phone: phone,
         company_name: customerType === 'workshop' ? companyName : null,
-        vehicle_make: make,
-        vehicle_model: model,
-        vehicle_year: year,
-        vehicle_engine: engine,
-        vehicle_fuel_type: fuelType,
-        vehicle_vin: vin,
-        ecu_manufacturer: manufacturer,
-        ecu_hardware_number: hardwareNumber,
-        ecu_software_number: softwareNumber,
-        ecu_identification_numbers: identificationNumbers,
         privacy_consent_at: new Date().toISOString(),
       })
       .select('id, reference')
@@ -119,6 +82,7 @@ Deno.serve(async (req) => {
     if (jobError) throw jobError;
 
     await attachOriginals(admin, job.id, job.reference, draftId, files);
+    await attachPhotos(admin, job.id, job.reference, draftId, photos);
 
     const profileDetails = {
       full_name: `${firstName} ${lastName}`,
@@ -136,10 +100,10 @@ Deno.serve(async (req) => {
       accountStatus = await attachAccount(admin, job.id, email, password, profileDetails);
     }
 
-    await logEvent(admin, job.id, caller?.user.id ?? null, 'submitted', { files: files.length, account: accountStatus });
+    await logEvent(admin, job.id, caller?.user.id ?? null, 'submitted', { files: files.length, photos: photos.length, account: accountStatus });
 
-    const vehicleLine = `${year} ${make} ${model} · ${engine} · ${fuelType}`;
-    const serviceLine = `${fileType} · ${SERVICE_LABELS[requestedService]}`;
+    const summary = vehicleSummary(details);
+    const serviceLine = summary[0][1];
 
     await Promise.all([
       sendEmail({
@@ -153,12 +117,7 @@ Deno.serve(async (req) => {
             ? 'We have also sent you a separate email with a link to open your account, where you can follow this job.'
             : 'You can follow this job, send us messages and download your file from your account.',
         ],
-        details: [
-          ['Job reference', job.reference],
-          ['Service', serviceLine],
-          ['Vehicle', vehicleLine],
-          ['Files', files.map((f) => f.originalName).join(', ')],
-        ],
+        details: [['Job reference', job.reference], summary[0], summary[1], ['Files', files.map((f) => f.originalName).join(', ')]],
         button: { label: 'View your job', url: jobUrl(job.reference) },
         footnote: `Keep your job reference ${job.reference} for all future messages. To sign in later, use "Email me a login link" at ${siteUrl()}/login.`,
       }),
@@ -172,11 +131,9 @@ Deno.serve(async (req) => {
           ['Customer', `${firstName} ${lastName}${companyName && customerType === 'workshop' ? ` · ${companyName}` : ''}`],
           ['Email', email],
           ['Account', caller ? caller.role : accountStatus],
-          ['Service', serviceLine],
-          ['Vehicle', vehicleLine],
-          ['VIN', vin],
-          ['Files', `${files.length}`],
-          ...(comments ? [['Comments', comments] as [string, string]] : []),
+          ...summary,
+          ['Files', `${files.length}${photos.length ? ` + ${photos.length} photo(s)` : ''}`],
+          ...(details.service_comments ? [['Comments', details.service_comments] as [string, string]] : []),
         ],
         button: { label: 'Open in admin', url: adminJobUrl(job.reference) },
       }),

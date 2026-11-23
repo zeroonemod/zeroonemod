@@ -116,7 +116,7 @@ async function deleteJob(admin: AdminClient, body: Record<string, unknown>) {
   const paths = new Set<string>();
   const { data: rows } = await admin.from('job_files').select('storage_path').eq('job_id', jobId);
   for (const row of rows ?? []) paths.add(row.storage_path as string);
-  for (const folder of ['original', 'additional', 'completed']) {
+  for (const folder of ['original', 'additional', 'completed', 'photos']) {
     const { data: listed } = await admin.storage.from(BUCKET).list(`${job.reference}/${folder}`, { limit: 1000 });
     for (const item of listed ?? []) paths.add(`${job.reference}/${folder}/${item.name}`);
   }

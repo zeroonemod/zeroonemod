@@ -7,11 +7,12 @@ import { CUSTOMER_TYPE_OPTIONS, type CustomerType, type StepProps } from '@/feat
 
 interface AboutStepProps extends StepProps {
   files: File[];
+  photos: File[];
   accountComplete: boolean;
   signedIn: boolean;
 }
 
-export function AboutStep({ form, errors, update, files, accountComplete, signedIn }: AboutStepProps) {
+export function AboutStep({ form, errors, update, files, photos, accountComplete, signedIn }: AboutStepProps) {
   return (
     <div className="flex flex-col gap-8">
       {!accountComplete && (
@@ -109,7 +110,7 @@ export function AboutStep({ form, errors, update, files, accountComplete, signed
 
       <div className="flex flex-col gap-4">
         <p className="text-sm font-medium text-neutral-200">Summary</p>
-        <ConfirmSummary form={form} files={files} />
+        <ConfirmSummary form={form} files={files} photos={photos} />
       </div>
 
       <CheckboxField

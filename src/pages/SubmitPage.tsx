@@ -2,7 +2,6 @@ import { useSearchParams } from 'react-router-dom';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useAuth } from '@/features/auth/useAuth';
-import { GuestSubmitForm } from '@/features/submission/GuestSubmitForm';
 import { SubmitChoice } from '@/features/submission/SubmitChoice';
 import { SubmitWizard } from '@/features/submission/SubmitWizard';
 import { useDocumentMeta } from '@/lib/useDocumentMeta';
@@ -33,7 +32,7 @@ export function SubmitPage() {
         ) : mode === 'account' ? (
           <SubmitWizard />
         ) : mode === 'guest' ? (
-          <GuestSubmitForm onBack={() => choose(null)} />
+          <SubmitWizard guest />
         ) : (
           <SubmitChoice onGuest={() => choose('guest')} onAccount={() => choose('account')} />
         )}

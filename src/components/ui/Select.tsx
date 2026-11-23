@@ -1,7 +1,7 @@
 import type { SelectHTMLAttributes } from 'react';
 import { controlClass, describedBy, Field } from '@/components/ui/FormField';
 
-const CHEVRON =
+export const CHEVRON =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%23A3A3A3' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")";
 
 export interface SelectOption {

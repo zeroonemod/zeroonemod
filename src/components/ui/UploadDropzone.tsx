@@ -10,6 +10,10 @@ interface UploadDropzoneProps {
   className?: string;
   /** Smaller drop area for dashboard and admin uploads. */
   compact?: boolean;
+  /** File types the picker offers, for example "image/*". Default: any file. */
+  accept?: string;
+  /** Icon in the circle. Default: upload arrow. */
+  icon?: ReactNode;
 }
 
 /** Help text under the original-file upload (home card, wizard, guest and partner forms). */
@@ -27,6 +31,8 @@ export function UploadDropzone({
   error,
   className = '',
   compact = false,
+  accept,
+  icon,
 }: UploadDropzoneProps) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -81,7 +87,7 @@ export function UploadDropzone({
         } ${error ? 'border-brand-500' : ''}`}
       >
         <span className="flex h-12 w-12 items-center justify-center rounded-full border border-brand-500/40 bg-brand-500/[0.08] text-brand-500 transition-transform duration-200 group-hover:-translate-y-0.5">
-          <Upload className="h-5 w-5" aria-hidden="true" />
+          {icon ?? <Upload className="h-5 w-5" aria-hidden="true" />}
         </span>
         <div className="flex max-w-md flex-col gap-2">
           <p className="text-base font-medium text-white">{title}</p>
@@ -94,6 +100,7 @@ export function UploadDropzone({
           id={inputId}
           type="file"
           multiple
+          accept={accept}
           className="sr-only"
           tabIndex={-1}
           aria-hidden="true"

@@ -17,6 +17,19 @@ export const SERVICE_OPTIONS: { value: RequestedService; label: string; descript
 
 export const FUEL_OPTIONS = ['Petrol', 'Diesel', 'Hybrid', 'Other'] as const;
 
+export type GearboxType = 'manual' | 'automatic' | 'dual_clutch' | 'cvt' | 'other';
+
+export const GEARBOX_OPTIONS: { value: GearboxType; label: string }[] = [
+  { value: 'manual', label: 'Manual' },
+  { value: 'automatic', label: 'Automatic' },
+  { value: 'dual_clutch', label: 'Dual-clutch (DSG/DCT)' },
+  { value: 'cvt', label: 'CVT' },
+  { value: 'other', label: 'Other' },
+];
+
+export const POWER_UNITS = ['HP', 'kW'] as const;
+export type PowerUnit = (typeof POWER_UNITS)[number];
+
 export const CUSTOMER_TYPE_OPTIONS: { value: CustomerType; label: string }[] = [
   { value: 'individual', label: 'Individual' },
   { value: 'workshop', label: 'Workshop / Service' },
@@ -32,6 +45,11 @@ export interface WizardForm {
   engine: string;
   fuelType: string;
   vin: string;
+  power: string;
+  powerUnit: PowerUnit;
+  torque: string;
+  gearboxType: GearboxType | '';
+  previouslyModified: 'yes' | 'no' | '';
   manufacturer: string;
   hardwareNumber: string;
   softwareNumber: string;
@@ -48,7 +66,7 @@ export interface WizardForm {
   website: string;
 }
 
-export type FormErrors = Partial<Record<keyof WizardForm | 'files', string>>;
+export type FormErrors = Partial<Record<keyof WizardForm | 'files' | 'photos' | 'contact', string>>;
 
 export const INITIAL_FORM: WizardForm = {
   fileType: '',
@@ -60,6 +78,11 @@ export const INITIAL_FORM: WizardForm = {
   engine: '',
   fuelType: '',
   vin: '',
+  power: '',
+  powerUnit: 'HP',
+  torque: '',
+  gearboxType: '',
+  previouslyModified: '',
   manufacturer: '',
   hardwareNumber: '',
   softwareNumber: '',
@@ -83,3 +106,5 @@ export interface StepProps {
 }
 
 export const WIZARD_STEPS = ['Your file', 'Vehicle and ECU', 'About you and confirm'] as const;
+/** Guests leave contact details instead of creating an account in step 3. */
+export const GUEST_WIZARD_STEPS = ['Your file', 'Vehicle and ECU', 'Contact and confirm'] as const;

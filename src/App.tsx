@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, type ComponentType } from 'react';
-import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { HomePage } from '@/pages/HomePage';
 import { CookieBanner } from '@/components/layout/CookieBanner';
 import { LoadingState } from '@/components/ui/LoadingState';
@@ -28,7 +28,6 @@ const DashboardPage = page(() => import('@/pages/DashboardPage'), 'DashboardPage
 const JobDetailPage = page(() => import('@/pages/JobDetailPage'), 'JobDetailPage');
 const MessagesPage = page(() => import('@/pages/MessagesPage'), 'MessagesPage');
 const ProfilePage = page(() => import('@/pages/ProfilePage'), 'ProfilePage');
-const PartnerSubmitPage = page(() => import('@/pages/PartnerSubmitPage'), 'PartnerSubmitPage');
 const AdminLayout = page(() => import('@/features/admin/AdminLayout'), 'AdminLayout');
 const AdminDashboard = page(() => import('@/features/admin/AdminDashboard'), 'AdminDashboard');
 const AdminJobsPage = page(() => import('@/features/admin/AdminJobsPage'), 'AdminJobsPage');
@@ -78,7 +77,8 @@ export default function App() {
               <Route path="/dashboard/jobs/:reference" element={<RequireAuth><JobDetailPage /></RequireAuth>} />
               <Route path="/dashboard/messages" element={<RequireAuth><MessagesPage /></RequireAuth>} />
               <Route path="/dashboard/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
-              <Route path="/dashboard/submit" element={<RequireAuth><PartnerSubmitPage /></RequireAuth>} />
+              {/* Partners now use the same 3-step form as everyone; keep the old address working. */}
+              <Route path="/dashboard/submit" element={<Navigate to="/submit" replace />} />
 
               <Route path="/admin" element={<RequireAuth adminOnly><AdminLayout /></RequireAuth>}>
                 <Route index element={<AdminDashboard />} />

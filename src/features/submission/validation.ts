@@ -38,6 +38,15 @@ function validateVehicle(form: WizardForm, errors: FormErrors) {
   }
 }
 
+function validateVehicleExtras(form: WizardForm, errors: FormErrors) {
+  const power = form.power.trim().replace(',', '.');
+  if (power && !(Number(power) > 0 && Number(power) <= 3000)) errors.power = 'Enter the power as a number, for example 150.';
+  const torque = form.torque.trim();
+  if (torque && !(/^\d+$/.test(torque) && Number(torque) > 0 && Number(torque) <= 5000)) errors.torque = 'Enter the torque in Nm, for example 340.';
+  if (!form.gearboxType) errors.gearboxType = 'Choose the gearbox type.';
+  if (!form.previouslyModified) errors.previouslyModified = 'Tell us whether the file was modified before.';
+}
+
 function validateEcu(form: WizardForm, errors: FormErrors) {
   if (form.manufacturer.trim().length > 80) errors.manufacturer = 'Please keep this under 80 characters.';
   if (form.hardwareNumber.trim().length > 80) errors.hardwareNumber = 'Please keep this under 80 characters.';
@@ -61,6 +70,22 @@ function validateAbout(form: WizardForm, errors: FormErrors) {
   }
 }
 
+/** International numbers with an optional leading +, 6 to 15 digits. */
+export function isValidPhone(value: string): boolean {
+  const trimmed = value.trim();
+  const digits = trimmed.replace(/\D/g, '');
+  return /^\+?[0-9][0-9 ().-]*[0-9]$/.test(trimmed) && digits.length >= 6 && digits.length <= 15;
+}
+
+/** Guests: at least one of email or phone, each checked only when filled in. */
+function validateGuestContact(form: WizardForm, errors: FormErrors) {
+  const email = form.email.trim();
+  const phone = form.phone.trim();
+  if (!email && !phone) errors.contact = 'Please enter an email or a phone number so we can contact you.';
+  if (email && !EMAIL_PATTERN.test(email)) errors.email = 'Enter a valid email address.';
+  if (phone && !isValidPhone(phone)) errors.phone = 'Enter a valid phone number, for example +34 600 000 000.';
+}
+
 function validateReview(form: WizardForm, errors: FormErrors) {
   if (!form.privacyConsent) errors.privacyConsent = 'You must accept the privacy terms to submit.';
   if (form.password && (form.password.length < 8 || form.password.length > 72)) {
@@ -68,7 +93,7 @@ function validateReview(form: WizardForm, errors: FormErrors) {
   }
 }
 
-export function validateStep(step: number, form: WizardForm, hasFiles: boolean): FormErrors {
+export function validateStep(step: number, form: WizardForm, hasFiles: boolean, guest = false): FormErrors {
   const errors: FormErrors = {};
   switch (step) {
     case 0:
@@ -77,16 +102,18 @@ export function validateStep(step: number, form: WizardForm, hasFiles: boolean):
       break;
     case 1:
       validateVehicle(form, errors);
+      validateVehicleExtras(form, errors);
       validateEcu(form, errors);
       break;
     case 2:
-      validateAbout(form, errors);
+      if (guest) validateGuestContact(form, errors);
+      else validateAbout(form, errors);
       validateReview(form, errors);
       break;
   }
   return errors;
 }
 
-export function validateAllSteps(form: WizardForm, hasFiles: boolean): FormErrors {
-  return Object.assign({}, ...[0, 1, 2].map((step) => validateStep(step, form, hasFiles)));
+export function validateAllSteps(form: WizardForm, hasFiles: boolean, guest = false): FormErrors {
+  return Object.assign({}, ...[0, 1, 2].map((step) => validateStep(step, form, hasFiles, guest)));
 }

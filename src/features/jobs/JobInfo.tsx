@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { formatDate } from '@/features/jobs/jobFormat';
-import { SERVICE_LABELS, vehicleLabel, type JobRow } from '@/features/jobs/jobTypes';
+import { GEARBOX_LABELS, SERVICE_LABELS, vehicleLabel, type JobRow } from '@/features/jobs/jobTypes';
 
 export function Detail({ label, value, mono = false }: { label: string; value: ReactNode; mono?: boolean }) {
   return (
@@ -25,6 +25,13 @@ export function JobVehicleDetails({ job }: { job: JobRow }) {
       <Detail label="Engine" value={job.vehicle_engine} />
       <Detail label="Fuel type" value={job.vehicle_fuel_type} />
       <Detail label="VIN" value={job.vehicle_vin} mono />
+      <Detail label="Power" value={job.vehicle_power ? `${job.vehicle_power} ${job.vehicle_power_unit ?? ''}` : null} />
+      <Detail label="Torque" value={job.vehicle_torque_nm ? `${job.vehicle_torque_nm} Nm` : null} />
+      <Detail label="Gearbox" value={job.gearbox_type ? GEARBOX_LABELS[job.gearbox_type] ?? job.gearbox_type : null} />
+      <Detail
+        label="File modified before"
+        value={job.file_previously_modified === null ? null : job.file_previously_modified ? 'Yes' : 'No'}
+      />
       <Detail label={`${job.file_type} manufacturer`} value={job.ecu_manufacturer} />
       <Detail label="Hardware number" value={job.ecu_hardware_number} mono />
       <Detail label="Software number" value={job.ecu_software_number} mono />

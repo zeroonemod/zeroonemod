@@ -64,6 +64,7 @@ export function CustomerJobDetail({ reference }: { reference: string }) {
 
   const { job, files } = loaded;
   const originals = files.filter((file) => file.kind === 'original');
+  const photos = files.filter((file) => file.kind === 'photo');
   const completed = files.filter((file) => file.kind === 'completed');
   const additional = files.filter((file) => file.kind === 'additional');
   const isPaid = job.payment_status === 'paid';
@@ -128,6 +129,12 @@ export function CustomerJobDetail({ reference }: { reference: string }) {
               files={originals}
               emptyText={job.files_deleted_at ? 'Files were removed under our retention policy.' : 'No original files on this job.'}
             />
+            {photos.length > 0 && (
+              <>
+                <p className="mb-3 mt-5 text-sm font-medium text-neutral-200">Hardware photos</p>
+                <FileDownloadList files={photos} emptyText="" />
+              </>
+            )}
             {job.status !== 'Awaiting Information' && additional.length > 0 && (
               <>
                 <p className="mb-3 mt-5 text-sm font-medium text-neutral-200">Additional files</p>

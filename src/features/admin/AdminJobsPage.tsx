@@ -15,6 +15,7 @@ import { formatDate, formatMoney } from '@/features/jobs/jobFormat';
 import {
   contactLabel,
   customerName,
+  GEARBOX_LABELS,
   isGuest,
   JOB_STATUSES,
   PAYMENT_COLUMNS,
@@ -70,6 +71,10 @@ export function exportJobsCsv(jobs: JobRow[]) {
       service: job.requested_service ? SERVICE_LABELS[job.requested_service] ?? job.requested_service : '',
       vehicle: isGuest(job) ? '' : vehicleLabel(job),
       engine: job.vehicle_engine ?? '',
+      power: job.vehicle_power ? `${job.vehicle_power} ${job.vehicle_power_unit ?? ''}` : '',
+      torque_nm: job.vehicle_torque_nm ?? '',
+      gearbox: job.gearbox_type ? GEARBOX_LABELS[job.gearbox_type] ?? job.gearbox_type : '',
+      previously_modified: job.file_previously_modified === null ? '' : job.file_previously_modified ? 'yes' : 'no',
       vin: job.vehicle_vin ?? '',
       quote_amount: job.quote_amount ?? '',
       currency: job.quote_currency,

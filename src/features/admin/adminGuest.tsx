@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase';
 import { GuestBadge, Panel } from '@/features/admin/adminShared';
 import { ActivityPanel, DeleteJobPanel, FilesPanel, NotesPanel, StatusPanel } from '@/features/admin/adminJobPanels';
 import { formatDateTime } from '@/features/jobs/jobFormat';
+import { JobVehicleDetails } from '@/features/jobs/JobInfo';
 import type { JobEventRow, JobFileRow, JobRow } from '@/features/jobs/jobTypes';
 import { CUSTOMER_TYPE_OPTIONS, FUEL_OPTIONS, SERVICE_OPTIONS } from '@/features/submission/types';
 
@@ -46,6 +47,11 @@ export function GuestRequestDetail({ job, files, notes, events, hasPayments, onC
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-6">
           <GuestContactPanel job={job} />
+          {job.vehicle_make && (
+            <Panel title="Vehicle and ECU">
+              <JobVehicleDetails job={job} />
+            </Panel>
+          )}
           <FilesPanel job={job} files={files} onChanged={onChanged} />
           <ConvertGuestPanel key={job.updated_at} job={job} onChanged={onChanged} />
         </div>
@@ -184,9 +190,14 @@ function missingFields(form: ConvertForm): string | null {
 function ConvertGuestPanel({ job, onChanged }: { job: JobRow; onChanged: () => void }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<ConvertForm>({
+    // Guests now send the vehicle and ECU/TCU details, so only the customer details are usually missing.
     firstName: '', lastName: '', email: (job.customer_email as string | null) ?? '', phone: job.customer_phone ?? '', country: '',
-    customerType: 'individual', companyName: '', fileType: '', requestedService: '', make: '', model: '', year: '', engine: '',
-    fuelType: '', vin: '', manufacturer: '', hardwareNumber: '', softwareNumber: '', price: '', createAccount: true,
+    customerType: 'individual', companyName: '',
+    fileType: job.file_type ?? '', requestedService: job.requested_service ?? '',
+    make: job.vehicle_make ?? '', model: job.vehicle_model ?? '', year: job.vehicle_year ? String(job.vehicle_year) : '',
+    engine: job.vehicle_engine ?? '', fuelType: job.vehicle_fuel_type ?? '', vin: job.vehicle_vin ?? '',
+    manufacturer: job.ecu_manufacturer ?? '', hardwareNumber: job.ecu_hardware_number ?? '', softwareNumber: job.ecu_software_number ?? '',
+    price: '', createAccount: true,
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

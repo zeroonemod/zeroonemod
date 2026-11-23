@@ -429,6 +429,7 @@ export function FilesPanel({ job, files, onChanged }: PanelProps & { files: JobF
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const originals = files.filter((f) => f.kind === 'original');
+  const photos = files.filter((f) => f.kind === 'photo');
   const additional = files.filter((f) => f.kind === 'additional');
   const completed = files.filter((f) => f.kind === 'completed');
 
@@ -475,6 +476,12 @@ export function FilesPanel({ job, files, onChanged }: PanelProps & { files: JobF
           <p className="mb-1 text-sm font-medium text-neutral-200">Original files</p>
           <FileDownloadList files={originals} emptyText="None." showDate />
         </div>
+        {photos.length > 0 && (
+          <div>
+            <p className="mb-1 text-sm font-medium text-neutral-200">Hardware photos</p>
+            <FileDownloadList files={photos} emptyText="" showDate />
+          </div>
+        )}
         {additional.length > 0 && (
           <div>
             <p className="mb-1 text-sm font-medium text-neutral-200">Additional files from the customer</p>

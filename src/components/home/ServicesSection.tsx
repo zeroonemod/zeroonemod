@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Cpu, Gauge, RotateCcw, SlidersHorizontal, Zap, type LucideIcon } from 'lucide-react';
+import { ArrowRight, Cpu, Gauge, Zap, type LucideIcon } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { IconBadge } from '@/components/ui/IconBadge';
 import { SectionHeading } from '@/components/ui/SectionHeading';
@@ -25,19 +25,9 @@ const SERVICES: ServiceItem[] = [
     to: '/tcu-services',
   },
   {
-    icon: RotateCcw,
-    title: 'Original File Restoration',
-    description: 'Restore a clean original from your backup where the file and control unit allow it.',
-  },
-  {
     icon: Zap,
     title: 'Stage 1 Calibration',
     description: 'Performance calibration for supported control units, delivered after payment.',
-  },
-  {
-    icon: SlidersHorizontal,
-    title: 'Supported File Modifications',
-    description: 'The modifications we currently offer. Availability depends on the unit, vehicle and file.',
   },
 ];
 

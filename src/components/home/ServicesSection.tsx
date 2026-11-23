@@ -27,7 +27,7 @@ const SERVICES: ServiceItem[] = [
   {
     icon: Zap,
     title: 'Stage 1 Calibration',
-    description: 'Performance calibration for supported control units, delivered after payment.',
+    description: 'Manually developed calibrations, tailored to each vehicle and its specific requirements.',
   },
 ];
 

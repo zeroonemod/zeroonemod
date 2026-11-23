@@ -1,5 +1,5 @@
-import { Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
 import { ButtonLink, Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import type { SubmitResult } from '@/features/submission/submitJob';
@@ -23,9 +23,7 @@ export function ConfirmationCard({ result, onSubmitAnother }: ConfirmationCardPr
   const signedIn = status === 'signed_in';
   return (
     <Card padding="lg" className="flex flex-col items-center gap-6 text-center">
-      <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/15 bg-surface-raised">
-        <Check className="h-6 w-6" aria-hidden="true" />
-      </span>
+      <AnimatedCheck size="lg" />
       <div className="flex flex-col gap-3">
         <h2 className="text-2xl font-bold leading-[1.2] sm:text-3xl">Your file has been submitted</h2>
         <p className="text-sm leading-[1.5] text-neutral-400">

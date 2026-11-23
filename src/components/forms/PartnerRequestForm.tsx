@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { Check, Loader2 } from 'lucide-react';
+import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
+import { Loader2 } from 'lucide-react';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { CheckboxField, TextArea, TextInput } from '@/components/ui/FormField';
@@ -81,9 +82,7 @@ export function PartnerRequestForm() {
   if (status === 'sent') {
     return (
       <div className="flex flex-col items-start gap-5">
-        <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-surface-raised">
-          <Check className="h-5 w-5" aria-hidden="true" />
-        </span>
+        <AnimatedCheck size="md" />
         <h3 className="text-xl font-bold leading-[1.2]">Request received</h3>
         <p className="text-sm leading-[1.5] text-neutral-400">
           Thank you. Our team reviews every partner request and will contact you. Submitting this form does not create

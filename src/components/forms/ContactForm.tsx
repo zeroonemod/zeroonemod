@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { Check, Loader2 } from 'lucide-react';
+import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
+import { Loader2 } from 'lucide-react';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -67,9 +68,7 @@ export function ContactForm() {
   if (status === 'sent') {
     return (
       <Card padding="lg" className="flex flex-col items-start gap-5">
-        <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-surface-raised">
-          <Check className="h-5 w-5" aria-hidden="true" />
-        </span>
+        <AnimatedCheck size="md" />
         <h2 className="text-2xl font-bold leading-[1.2]">Thank you, your message has been sent</h2>
         <p className="text-sm leading-[1.5] text-neutral-400">
           We have received your message and will reply by email. For a file quotation, please use Submit a file so we

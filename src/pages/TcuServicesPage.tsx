@@ -1,4 +1,4 @@
-import { Cog, FileCode, RotateCcw, TriangleAlert, Gauge } from 'lucide-react';
+import { Cog, RotateCcw, TriangleAlert, Gauge } from 'lucide-react';
 import { ContentPage, NoticeCard, SubmitCta } from '@/components/content/ContentPage';
 import { ServiceGrid, type ServiceItem } from '@/components/content/ServiceList';
 
@@ -30,12 +30,6 @@ const SERVICES: ServiceItem[] = [
     description:
       'Selected diagnostic trouble codes switched off in the TCU software on request, where the file supports it. We confirm which codes can be removed after reviewing your file.',
     items: ['Individual fault codes on request', 'Checked against your original file'],
-  },
-  {
-    icon: FileCode,
-    title: 'File review before work',
-    description:
-      'Send your TCU file for review first. We confirm what is supported for your gearbox and explain the options before any work starts.',
   },
 ];
 

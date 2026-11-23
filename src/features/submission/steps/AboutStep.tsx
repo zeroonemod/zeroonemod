@@ -91,19 +91,33 @@ export function AboutStep({ form, errors, update, files, photos, accountComplete
             />
           </div>
           {!signedIn && (
-          <div className="sm:col-span-2">
-            <TextInput
-              id="password"
-              label="Create a password to track your order"
-              optional
-              type="password"
-              autoComplete="new-password"
-              value={form.password}
-              onChange={(event) => update('password', event.target.value)}
-              error={errors.password}
-              hint="Creates your customer account so you can log in to follow this order. Leave it empty and we will email you a sign-in link instead."
-            />
-          </div>
+            <>
+              <TextInput
+                id="password"
+                label="Create a password"
+                type="password"
+                autoComplete="new-password"
+                maxLength={72}
+                value={form.password}
+                onChange={(event) => update('password', event.target.value)}
+                error={errors.password}
+                hint="At least 8 characters. You log in with your email and this password to follow your order."
+              />
+              <TextInput
+                id="passwordConfirm"
+                label="Confirm password"
+                type="password"
+                autoComplete="new-password"
+                maxLength={72}
+                value={form.passwordConfirm}
+                onChange={(event) => update('passwordConfirm', event.target.value)}
+                error={errors.passwordConfirm}
+              />
+              <p className="-mt-2 text-xs leading-relaxed text-neutral-400 sm:col-span-2">
+                Already have an account with this email? Your order is added to it and you keep your existing password.
+                You can switch on two-step verification in your profile after logging in.
+              </p>
+            </>
           )}
         </div>
       )}

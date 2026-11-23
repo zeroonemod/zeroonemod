@@ -56,7 +56,8 @@ Deno.serve(async (req) => {
       !firstName || !lastName || !EMAIL.test(email) || email.length > 254 || !country ||
       (customerType === 'workshop' && !companyName) ||
       body.privacyConsent !== true ||
-      (password !== null && (password.length < 8 || password.length > 72));
+      // Visitors who choose the account path must set a password (no sign-in links).
+      (!caller && (password === null || password.length < 8 || password.length > 72));
     if (invalid || !files || !photos || !details) return json(req, { error: INVALID }, 400);
 
     if (!(await pendingFilesPresent(admin, draftId, [...files, ...photos]))) {
@@ -154,7 +155,7 @@ type ProfileDetails = {
   phone: string | null;
 };
 
-/** Guests are never forced to register: link to an existing account, or create one. */
+/** Account path: link the job to the existing account for this email, or create one with the chosen password. */
 async function attachAccount(
   admin: AdminClient,
   jobId: string,
@@ -169,27 +170,17 @@ async function attachAccount(
     return 'exists';
   }
 
-  let userId: string | null = null;
-  let status: AccountStatus = 'unavailable';
-  if (password) {
-    const { data, error } = await admin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { full_name: details.full_name },
-    });
-    if (error) console.error('createUser failed', error.message);
-    userId = data?.user?.id ?? null;
-    status = userId ? 'created' : 'unavailable';
-  } else {
-    const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${siteUrl()}/dashboard`,
-      data: { full_name: details.full_name },
-    });
-    if (error) console.error('inviteUserByEmail failed', error.message);
-    userId = data?.user?.id ?? null;
-    status = userId ? 'invited' : 'unavailable';
-  }
+  // New accounts always get the password the customer chose in step 3.
+  if (!password) return 'unavailable';
+  const { data, error } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { full_name: details.full_name },
+  });
+  if (error) console.error('createUser failed', error.message);
+  const userId = data?.user?.id ?? null;
+  const status: AccountStatus = userId ? 'created' : 'unavailable';
 
   if (userId) {
     await admin.from('jobs').update({ user_id: userId }).eq('id', jobId);

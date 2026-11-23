@@ -71,7 +71,7 @@ export function parseJobDetails(body: Record<string, unknown>): JobDetails | nul
   const software = optionalText(ecu.softwareNumber, 80);
   const identification = optionalText(ecu.identificationNumbers, 300);
 
-  // Power and torque are optional. Power needs a unit when it is given.
+  // Power (with its unit) and torque are required.
   const powerRaw = vehicle.power;
   const power = powerRaw === null || powerRaw === undefined || powerRaw === '' ? null : Number(powerRaw);
   const powerUnit = power === null ? null : oneOf(vehicle.powerUnit, POWER_UNITS);
@@ -84,8 +84,8 @@ export function parseJobDetails(body: Record<string, unknown>): JobDetails | nul
     !fileType || !service || !fuel || !gearbox || !make || !model || !engine || !VIN.test(vin) ||
     !Number.isInteger(year) || year < 1950 || year > currentYear + 1 ||
     comments === undefined || manufacturer === undefined || hardware === undefined || software === undefined || identification === undefined ||
-    (power !== null && (!Number.isFinite(power) || power <= 0 || power > 3000 || !powerUnit)) ||
-    (torque !== null && (!Number.isInteger(torque) || torque <= 0 || torque > 5000)) ||
+    power === null || !Number.isFinite(power) || power <= 0 || power > 3000 || !powerUnit ||
+    torque === null || !Number.isInteger(torque) || torque <= 0 || torque > 5000 ||
     typeof modified !== 'boolean';
   if (invalid) return null;
 

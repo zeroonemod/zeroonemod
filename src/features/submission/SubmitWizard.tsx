@@ -12,7 +12,7 @@ import { submitGuest, submitJob, type SubmitResult } from '@/features/submission
 import { GuestConfirmation } from '@/features/submission/GuestConfirmation';
 import { GuestContactStep } from '@/features/submission/steps/GuestContactStep';
 import { usePreviousVehicles } from '@/features/submission/usePreviousVehicles';
-import { validateAllSteps, validateStep } from '@/features/submission/validation';
+import { validateAllSteps, validateStep, type SubmitMode } from '@/features/submission/validation';
 import { ConfirmationCard } from '@/features/submission/ConfirmationCard';
 import { YourFileStep } from '@/features/submission/steps/YourFileStep';
 import { VehicleStep } from '@/features/submission/steps/VehicleStep';
@@ -39,6 +39,7 @@ export function SubmitWizard({ guest = false }: { guest?: boolean }) {
   const { user, profile } = useAuth();
   const signedIn = Boolean(user && profile) && !guest;
   const stepLabels = guest ? GUEST_WIZARD_STEPS : WIZARD_STEPS;
+  const mode: SubmitMode = guest ? 'guest' : signedIn ? 'signed_in' : 'new_account';
   const [reference, setReference] = useState<string | null>(null);
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<WizardForm>(INITIAL_FORM);
@@ -66,7 +67,7 @@ export function SubmitWizard({ guest = false }: { guest?: boolean }) {
   }, [profile?.id]);
 
   const effectiveForm: WizardForm = accountFields
-    ? { ...form, ...(accountComplete ? accountFields : {}), email: accountFields.email, password: '' }
+    ? { ...form, ...(accountComplete ? accountFields : {}), email: accountFields.email, password: '', passwordConfirm: '' }
     : form;
 
   const update: StepProps['update'] = (key, value) => {
@@ -101,7 +102,7 @@ export function SubmitWizard({ guest = false }: { guest?: boolean }) {
   };
 
   const handleNext = () => {
-    const stepErrors = validateStep(step, effectiveForm, files.length > 0, guest);
+    const stepErrors = validateStep(step, effectiveForm, files.length > 0, mode);
     if (Object.keys(stepErrors).length > 0) {
       setErrors(stepErrors);
       focusFirstError();
@@ -114,10 +115,10 @@ export function SubmitWizard({ guest = false }: { guest?: boolean }) {
     event.preventDefault();
     if (step !== LAST_STEP || isSubmitting) return;
 
-    const allErrors = validateAllSteps(effectiveForm, files.length > 0, guest);
+    const allErrors = validateAllSteps(effectiveForm, files.length > 0, mode);
     if (Object.keys(allErrors).length > 0) {
       setErrors(allErrors);
-      const firstStep = [0, 1, 2].find((index) => Object.keys(validateStep(index, effectiveForm, files.length > 0, guest)).length > 0) ?? step;
+      const firstStep = [0, 1, 2].find((index) => Object.keys(validateStep(index, effectiveForm, files.length > 0, mode)).length > 0) ?? step;
       if (firstStep !== step) setStep(firstStep);
       focusFirstError();
       return;

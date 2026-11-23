@@ -98,7 +98,7 @@ export function VehicleStep({ previousVehicles = [], onApplyVehicle, ...props }:
           className="font-mono uppercase tracking-wider"
         />
 
-        <Field id="power" label="Power" optional error={errors.power}>
+        <Field id="power" label="Power" error={errors.power}>
           <div className="flex gap-2">
             <input
               id="power"
@@ -131,7 +131,6 @@ export function VehicleStep({ previousVehicles = [], onApplyVehicle, ...props }:
         <TextInput
           id="torque"
           label="Torque (Nm)"
-          optional
           inputMode="numeric"
           placeholder="e.g. 340"
           value={form.torque}

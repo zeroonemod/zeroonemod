@@ -63,6 +63,7 @@ export interface WizardForm {
   phone: string;
   privacyConsent: boolean;
   password: string;
+  passwordConfirm: string;
   website: string;
 }
 
@@ -96,6 +97,7 @@ export const INITIAL_FORM: WizardForm = {
   phone: '',
   privacyConsent: false,
   password: '',
+  passwordConfirm: '',
   website: '',
 };
 

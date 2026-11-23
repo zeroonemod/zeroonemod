@@ -8,10 +8,13 @@ import { LoadingState } from '@/components/ui/LoadingState';
 import { callFunction, errorMessage } from '@/lib/api';
 import { isValidEmail } from '@/lib/requestForms';
 import { supabase } from '@/lib/supabase';
-import { AdminPageHeader, Panel, useAdminSettings } from '@/features/admin/adminShared';
+import { AdminPageHeader, Panel, useAdminSettings, type AdminSettings } from '@/features/admin/adminShared';
 import { exportJobsCsv, exportPaymentsCsv } from '@/features/admin/AdminJobsPage';
 import { useAdminJobs } from '@/features/admin/useAdminJobs';
 import { formatDate } from '@/features/jobs/jobFormat';
+import { useAuth } from '@/features/auth/useAuth';
+import { ChangePasswordForm } from '@/features/auth/ChangePasswordForm';
+import { TwoFactorSettings } from '@/features/auth/TwoFactorSettings';
 import type { MessageTemplate } from '@/features/jobs/JobMessages';
 
 interface DeletionRequest {
@@ -32,9 +35,11 @@ export function AdminSettingsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <AdminPageHeader title="Settings" description="Notifications, file retention, reply templates, GDPR requests and exports." />
+      <AdminPageHeader title="Settings" description="Your account, email addresses, file retention, reply templates, GDPR requests and exports." />
+      <AccountPanel />
+      <EmailSettings settings={settings} onSaved={reload} />
       <div className="grid gap-6 xl:grid-cols-2">
-        <GeneralSettings initialEmail={settings.notification_email} initialDays={settings.retention_days} initialAuto={settings.auto_delete_enabled} onSaved={reload} />
+        <GeneralSettings initialDays={settings.retention_days} initialAuto={settings.auto_delete_enabled} onSaved={reload} />
         <ExportsPanel />
       </div>
       <TemplatesPanel initial={settings.templates} onSaved={reload} />
@@ -43,8 +48,66 @@ export function AdminSettingsPage() {
   );
 }
 
-function GeneralSettings({ initialEmail, initialDays, initialAuto, onSaved }: { initialEmail: string; initialDays: number; initialAuto: boolean; onSaved: () => void }) {
-  const [email, setEmail] = useState(initialEmail);
+/** The signed-in admin: two-step verification and password. */
+function AccountPanel() {
+  const { user } = useAuth();
+  return (
+    <Panel title="Your account">
+      <p className="mb-6 break-all text-sm text-neutral-400">
+        Signed in as <span className="text-white">{user?.email}</span>
+      </p>
+      <div className="grid gap-8 xl:grid-cols-2">
+        <div className="flex flex-col gap-3">
+          <h3 className="text-sm font-semibold text-neutral-200">Two-step verification</h3>
+          <TwoFactorSettings />
+        </div>
+        <div className="flex flex-col gap-3">
+          <h3 className="text-sm font-semibold text-neutral-200">Password</h3>
+          <ChangePasswordForm idPrefix="admin-pw" />
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+/** Which address receives notifications, which is the public contact, which handles payments. */
+function EmailSettings({ settings, onSaved }: { settings: AdminSettings; onSaved: () => void }) {
+  const [notification, setNotification] = useState(settings.notification_email);
+  const [support, setSupport] = useState(settings.support_email);
+  const [billing, setBilling] = useState(settings.billing_email);
+  const [notice, setNotice] = useState<Notice>(null);
+
+  const save = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (![notification, support, billing].every(isValidEmail)) return setNotice({ tone: 'error', text: 'Enter three valid email addresses.' });
+    const { error } = await supabase
+      .from('admin_settings')
+      .update({ notification_email: notification.trim().toLowerCase(), support_email: support.trim().toLowerCase(), billing_email: billing.trim().toLowerCase() })
+      .eq('id', true);
+    setNotice(error ? { tone: 'error', text: 'Email addresses could not be saved.' } : { tone: 'success', text: 'Email addresses saved.' });
+    if (!error) onSaved();
+  };
+
+  return (
+    <Panel title="Email addresses">
+      <form onSubmit={save} noValidate className="flex flex-col gap-5">
+        <div className="grid gap-5 lg:grid-cols-3">
+          <TextInput id="email-admin" label="Admin notifications" type="email" hint="New jobs, guest requests, customer messages, extra files and partner requests." value={notification} onChange={(e) => setNotification(e.target.value)} />
+          <TextInput id="email-support" label="Info and support" type="email" hint="Public contact address. Receives the contact form; customers reply here." value={support} onChange={(e) => setSupport(e.target.value)} />
+          <TextInput id="email-billing" label="Billing" type="email" hint="Sends quotations, payment links and download links; customers reply here about payments." value={billing} onChange={(e) => setBilling(e.target.value)} />
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <NoticeLine notice={notice} />
+          <Button type="submit" className="sm:ml-auto">
+            Save email addresses
+          </Button>
+        </div>
+      </form>
+    </Panel>
+  );
+}
+
+function GeneralSettings({ initialDays, initialAuto, onSaved }: { initialDays: number; initialAuto: boolean; onSaved: () => void }) {
   const [days, setDays] = useState(String(initialDays));
   const [auto, setAuto] = useState(initialAuto);
   const [notice, setNotice] = useState<Notice>(null);
@@ -54,11 +117,10 @@ function GeneralSettings({ initialEmail, initialDays, initialAuto, onSaved }: { 
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const retention = Number(days);
-    if (!isValidEmail(email)) return setNotice({ tone: 'error', text: 'Enter a valid notification email.' });
     if (!Number.isInteger(retention) || retention < 30 || retention > 3650) return setNotice({ tone: 'error', text: 'Retention must be between 30 and 3650 days.' });
     const { error } = await supabase
       .from('admin_settings')
-      .update({ notification_email: email.trim().toLowerCase(), retention_days: retention, auto_delete_enabled: auto })
+      .update({ retention_days: retention, auto_delete_enabled: auto })
       .eq('id', true);
     setNotice(error ? { tone: 'error', text: 'Settings could not be saved.' } : { tone: 'success', text: 'Settings saved.' });
     if (!error) onSaved();
@@ -78,9 +140,8 @@ function GeneralSettings({ initialEmail, initialDays, initialAuto, onSaved }: { 
   };
 
   return (
-    <Panel title="Notifications and retention">
+    <Panel title="File retention">
       <form onSubmit={save} noValidate className="flex flex-col gap-5">
-        <TextInput id="notify-email" label="Notification email" type="email" hint="New submissions, customer messages, contact and partner requests are sent here." value={email} onChange={(e) => setEmail(e.target.value)} />
         <TextInput id="retention-days" label="File retention (days)" inputMode="numeric" hint="Between 30 and 3650 days." value={days} onChange={(e) => setDays(e.target.value)} />
         <CheckboxField id="auto-delete" checked={auto} onChange={setAuto}>
           Automatically delete job files older than the retention period (runs daily). Job records and payments are kept.

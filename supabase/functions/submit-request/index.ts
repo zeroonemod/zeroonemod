@@ -1,6 +1,6 @@
 // Contact form and partner access requests. A partner request never grants access: it waits for admin review.
 import { clientIp, EMAIL, json, optionalText, preflight, readJson, siteUrl, text } from '../_shared/http.ts';
-import { adminClient, isRateLimited, notificationEmail } from '../_shared/supabase.ts';
+import { adminClient, emailAddresses, isRateLimited } from '../_shared/supabase.ts';
 import { sendEmail } from '../_shared/email.ts';
 
 const INVALID = 'Some details are missing or invalid. Please check the form and try again.';
@@ -33,7 +33,8 @@ Deno.serve(async (req) => {
     }
 
     const consentAt = new Date().toISOString();
-    const to = await notificationEmail(admin);
+    // Contact form goes to info (support); partner requests to the admin notifications address.
+    const addresses = await emailAddresses(admin);
 
     if (kind === 'contact') {
       const name = text(body.name, 120);
@@ -44,7 +45,7 @@ Deno.serve(async (req) => {
       const { error } = await admin.from('contact_messages').insert({ name, email, subject, message, consent_at: consentAt });
       if (error) throw error;
       await sendEmail({
-        to,
+        to: addresses.support,
         replyTo: email,
         subject: `Contact form: ${subject}`,
         heading: 'New contact message',
@@ -78,7 +79,7 @@ Deno.serve(async (req) => {
     });
     if (error) throw error;
     await sendEmail({
-      to,
+      to: addresses.notification,
       replyTo: email,
       subject: `Partner request: ${companyName}`,
       heading: 'New partner access request',

@@ -2,6 +2,7 @@ import { Link, Navigate, useLocation } from 'react-router-dom';
 import { Card } from '@/components/ui/Card';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { LoginForm } from '@/features/auth/LoginForm';
+import { MfaChallenge } from '@/features/auth/MfaChallenge';
 import { useAuth } from '@/features/auth/useAuth';
 import { homeForRole } from '@/features/auth/roles';
 import { LoadingState } from '@/components/ui/LoadingState';
@@ -30,12 +31,10 @@ export function LoginPage() {
       <div className="mx-auto flex max-w-md flex-col gap-8 px-5 py-16 sm:py-24">
         <header className="flex flex-col gap-3 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-400">Account</p>
-          <h1 className="text-3xl font-bold leading-[1.2] tracking-tight">Log in</h1>
+          <h1 className="text-3xl font-bold leading-[1.2] tracking-tight">{status === 'mfa_required' ? 'Two-step verification' : 'Log in'}</h1>
         </header>
 
-        <Card padding="lg">
-          <LoginForm />
-        </Card>
+        <Card padding="lg">{status === 'mfa_required' ? <MfaChallenge /> : <LoginForm />}</Card>
 
         <p className="text-center text-sm leading-[1.5] text-neutral-400">
           Workshop or business?{' '}

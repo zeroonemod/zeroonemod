@@ -43,7 +43,7 @@ supabase/
    `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are provided to functions automatically.
 5. Authentication > URL Configuration: Site URL `https://zeroonemod.com`, redirect URLs `https://zeroonemod.com/**` and `http://localhost:5173/**`.
 6. Authentication > Sign In / Providers > Email: turn **off** "Allow new users to sign up" (accounts are only created by submissions and partner invitations).
-7. Create the admin: Authentication > Users > Add user (tick auto confirm), then run `supabase/make-admin.sql` with that email.
+7. Create the admin: Authentication > Users > Add user `admin@zeroonemod.com` (tick auto confirm), then run `supabase/make-admin.sql`. Two-step verification for the admin is switched on in Admin > Settings > Your account.
 8. Daily file retention: in Integrations > Cron, create a job that runs daily and sends an HTTP POST to
    `https://YOUR_PROJECT_REF.supabase.co/functions/v1/retention-cleanup` with header `x-cron-secret: <CRON_SECRET>`.
 

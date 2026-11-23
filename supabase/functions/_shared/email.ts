@@ -14,6 +14,8 @@ export interface EmailContent {
 export interface EmailMessage extends EmailContent {
   to: string;
   replyTo?: string;
+  /** Sender address, for example billing@zeroonemod.com. Default: EMAIL_FROM. */
+  fromAddress?: string;
 }
 
 export function emailEnabled(): boolean {
@@ -97,9 +99,9 @@ export async function sendEmail(message: EmailMessage): Promise<boolean> {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: Deno.env.get('EMAIL_FROM') ?? 'ZEROONEMOD <info@zeroonemod.com>',
+        from: message.fromAddress ? `ZEROONEMOD <${message.fromAddress}>` : Deno.env.get('EMAIL_FROM') ?? 'ZEROONEMOD <info@zeroonemod.com>',
         to: [message.to],
-        reply_to: message.replyTo ?? 'info@zeroonemod.com',
+        reply_to: message.replyTo ?? message.fromAddress ?? 'info@zeroonemod.com',
         subject: message.subject,
         html,
         text,

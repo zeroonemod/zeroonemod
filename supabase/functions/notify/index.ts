@@ -2,7 +2,7 @@
 // The email is built from the database, never from text sent by the browser,
 // and each event is limited to the people allowed to trigger it.
 import { json, preflight, readJson } from '../_shared/http.ts';
-import { adminClient, getCaller, isRateLimited, notificationEmail } from '../_shared/supabase.ts';
+import { adminClient, emailAddresses, getCaller, isRateLimited } from '../_shared/supabase.ts';
 import { adminJobUrl, type EmailMessage, formatMoney, jobUrl, sendEmail } from '../_shared/email.ts';
 
 const ADMIN_EVENTS = ['status_changed', 'quotation_sent', 'payment_link', 'delivered', 'admin_message', 'download_link'] as const;
@@ -65,6 +65,9 @@ Deno.serve(async (req) => {
     if (!hasAccount && (event === 'admin_message' || event === 'delivered')) return json(req, { sent: false, reason: 'no_account' });
 
     const hello = `Hello ${job.customer_first_name ?? ''},`;
+    const addresses = await emailAddresses(admin);
+    // Payment-related emails come from billing; everything else to customers from info (support).
+    const BILLING_EVENTS: NotifyEvent[] = ['quotation_sent', 'payment_link', 'download_link'];
     let message: EmailMessage | null = null;
 
     switch (event) {
@@ -89,7 +92,7 @@ Deno.serve(async (req) => {
           button: { label: links.length === 1 ? 'Download your file' : 'Download first file', url: links[0][1] },
           footnote: links.length > 1 ? links.map(([name, url]) => `${name}: ${url}`).join('\n') : undefined,
         };
-        const sent = await sendEmail(message);
+        const sent = await sendEmail({ ...message, fromAddress: addresses.billing });
         if (sent) {
           await admin.from('job_events').insert({ job_id: job.id, actor_id: caller.user.id, action: 'download_link_sent', details: { files: links.length, days: DOWNLOAD_LINK_DAYS } });
         }
@@ -173,7 +176,7 @@ Deno.serve(async (req) => {
       case 'customer_message':
       case 'additional_files':
         message = {
-          to: await notificationEmail(admin),
+          to: addresses.notification,
           replyTo: customerEmail ?? undefined,
           subject: event === 'customer_message' ? `New customer message · ${job.reference}` : `Additional files uploaded · ${job.reference}`,
           heading: event === 'customer_message' ? 'New message from a customer' : 'The customer uploaded additional files',
@@ -184,6 +187,9 @@ Deno.serve(async (req) => {
         break;
     }
 
+    if (message && message.to !== addresses.notification) {
+      message.fromAddress = BILLING_EVENTS.includes(event) ? addresses.billing : addresses.support;
+    }
     const sent = message ? await sendEmail(message) : false;
     return json(req, { sent });
   } catch (error) {

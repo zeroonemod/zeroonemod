@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { TextInput } from '@/components/ui/FormField';
 import { useAuth } from '@/features/auth/useAuth';
+import { TwoFactorSettings } from '@/features/auth/TwoFactorSettings';
 import { supabase } from '@/lib/supabase';
 
 export function CustomerProfile() {
@@ -128,6 +129,11 @@ export function CustomerProfile() {
             </Button>
           </div>
         </form>
+      </Card>
+
+      <Card padding="lg">
+        <h2 className="mb-4 text-lg font-semibold text-white">Two-step verification</h2>
+        <TwoFactorSettings />
       </Card>
 
       <Card padding="lg">

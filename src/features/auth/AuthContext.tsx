@@ -16,7 +16,8 @@ export interface AccountProfile {
 }
 
 export interface AuthState {
-  status: 'loading' | 'signed_out' | 'signed_in';
+  /** mfa_required: password accepted, the two-step verification code is still needed. */
+  status: 'loading' | 'signed_out' | 'signed_in' | 'mfa_required';
   session: Session | null;
   user: User | null;
   profile: AccountProfile | null;
@@ -65,6 +66,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(null);
         setProfileError(false);
         setStatus('signed_out');
+        return;
+      }
+      // Two-step verification switched on but not yet passed in this session: ask for the code first.
+      const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (!active) return;
+      if (assurance && assurance.nextLevel === 'aal2' && assurance.currentLevel !== 'aal2') {
+        setProfile(null);
+        setProfileError(false);
+        setStatus('mfa_required');
         return;
       }
       const result = await fetchProfile(next.user.id);

@@ -40,9 +40,11 @@ function validateVehicle(form: WizardForm, errors: FormErrors) {
 
 function validateVehicleExtras(form: WizardForm, errors: FormErrors) {
   const power = form.power.trim().replace(',', '.');
-  if (power && !(Number(power) > 0 && Number(power) <= 3000)) errors.power = 'Enter the power as a number, for example 150.';
+  if (!power) errors.power = 'Enter the engine power.';
+  else if (!(Number(power) > 0 && Number(power) <= 3000)) errors.power = 'Enter the power as a number, for example 150.';
   const torque = form.torque.trim();
-  if (torque && !(/^\d+$/.test(torque) && Number(torque) > 0 && Number(torque) <= 5000)) errors.torque = 'Enter the torque in Nm, for example 340.';
+  if (!torque) errors.torque = 'Enter the torque in Nm.';
+  else if (!(/^\d+$/.test(torque) && Number(torque) > 0 && Number(torque) <= 5000)) errors.torque = 'Enter the torque in Nm, for example 340.';
   if (!form.gearboxType) errors.gearboxType = 'Choose the gearbox type.';
   if (!form.previouslyModified) errors.previouslyModified = 'Tell us whether the file was modified before.';
 }
@@ -86,14 +88,21 @@ function validateGuestContact(form: WizardForm, errors: FormErrors) {
   if (phone && !isValidPhone(phone)) errors.phone = 'Enter a valid phone number, for example +34 600 000 000.';
 }
 
-function validateReview(form: WizardForm, errors: FormErrors) {
-  if (!form.privacyConsent) errors.privacyConsent = 'You must accept the privacy terms to submit.';
-  if (form.password && (form.password.length < 8 || form.password.length > 72)) {
-    errors.password = 'Use between 8 and 72 characters.';
-  }
+/** New accounts (not signed in, not a guest) must choose a password. */
+function validatePassword(form: WizardForm, errors: FormErrors) {
+  if (!form.password) errors.password = 'Create a password for your account.';
+  else if (form.password.length < 8 || form.password.length > 72) errors.password = 'Use between 8 and 72 characters.';
+  if (form.password && form.passwordConfirm !== form.password) errors.passwordConfirm = 'The passwords do not match.';
 }
 
-export function validateStep(step: number, form: WizardForm, hasFiles: boolean, guest = false): FormErrors {
+function validateReview(form: WizardForm, errors: FormErrors) {
+  if (!form.privacyConsent) errors.privacyConsent = 'You must accept the privacy terms to submit.';
+}
+
+/** guest: contact only. new_account: details and a password. signed_in: details from the profile. */
+export type SubmitMode = 'guest' | 'new_account' | 'signed_in';
+
+export function validateStep(step: number, form: WizardForm, hasFiles: boolean, mode: SubmitMode): FormErrors {
   const errors: FormErrors = {};
   switch (step) {
     case 0:
@@ -106,14 +115,15 @@ export function validateStep(step: number, form: WizardForm, hasFiles: boolean, 
       validateEcu(form, errors);
       break;
     case 2:
-      if (guest) validateGuestContact(form, errors);
+      if (mode === 'guest') validateGuestContact(form, errors);
       else validateAbout(form, errors);
+      if (mode === 'new_account') validatePassword(form, errors);
       validateReview(form, errors);
       break;
   }
   return errors;
 }
 
-export function validateAllSteps(form: WizardForm, hasFiles: boolean, guest = false): FormErrors {
-  return Object.assign({}, ...[0, 1, 2].map((step) => validateStep(step, form, hasFiles, guest)));
+export function validateAllSteps(form: WizardForm, hasFiles: boolean, mode: SubmitMode): FormErrors {
+  return Object.assign({}, ...[0, 1, 2].map((step) => validateStep(step, form, hasFiles, mode)));
 }

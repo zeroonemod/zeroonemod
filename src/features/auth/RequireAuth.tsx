@@ -15,7 +15,7 @@ export function RequireAuth({ children, adminOnly = false }: RequireAuthProps) {
 
   if (status === 'loading') return <LoadingState label="Checking your session" />;
 
-  if (status === 'signed_out') {
+  if (status === 'signed_out' || status === 'mfa_required') {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 

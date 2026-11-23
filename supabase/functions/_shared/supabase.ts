@@ -21,11 +21,27 @@ export async function getCaller(admin: AdminClient, req: Request): Promise<Calle
   const { data, error } = await admin.auth.getUser(token);
   if (error || !data.user) return null;
   const { data: profile } = await admin.from('profiles').select('role, is_active').eq('id', data.user.id).maybeSingle();
+  let role = (profile?.role as Caller['role']) ?? 'customer';
+  // Admin rights also need two-step verification when it is switched on. The database decides
+  // (public.is_admin), using the caller's own token so its login level (aal) is taken into account.
+  if (role === 'admin' && !(await callerIsAdmin(token))) role = 'customer';
   return {
     user: data.user,
-    role: (profile?.role as Caller['role']) ?? 'customer',
+    role,
     isActive: profile?.is_active ?? true,
   };
+}
+
+async function callerIsAdmin(token: string): Promise<boolean> {
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
+  if (!anonKey) return false;
+  const asCaller = createClient(Deno.env.get('SUPABASE_URL')!, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+  const { data, error } = await asCaller.rpc('is_admin');
+  if (error) console.error('is_admin check failed', error.message);
+  return data === true;
 }
 
 /** True when the key has been used more than `max` times in the window. */
@@ -38,9 +54,27 @@ export async function isRateLimited(admin: AdminClient, key: string, max: number
   return data === true;
 }
 
+export interface EmailAddresses {
+  /** Website notifications to the business (new jobs, messages, partner requests). */
+  notification: string;
+  /** Public contact address: contact form, and where customers reply. */
+  support: string;
+  /** Quotations, payment links and download links are sent from here. */
+  billing: string;
+}
+
+/** The three addresses from Admin → Settings → Email addresses. */
+export async function emailAddresses(admin: AdminClient): Promise<EmailAddresses> {
+  const { data } = await admin.from('admin_settings').select('notification_email, support_email, billing_email').eq('id', true).maybeSingle();
+  return {
+    notification: data?.notification_email || Deno.env.get('NOTIFICATION_EMAIL') || 'admin@zeroonemod.com',
+    support: data?.support_email || 'info@zeroonemod.com',
+    billing: data?.billing_email || 'billing@zeroonemod.com',
+  };
+}
+
 export async function notificationEmail(admin: AdminClient): Promise<string> {
-  const { data } = await admin.from('admin_settings').select('notification_email').eq('id', true).maybeSingle();
-  return data?.notification_email || Deno.env.get('NOTIFICATION_EMAIL') || 'info@zeroonemod.com';
+  return (await emailAddresses(admin)).notification;
 }
 
 export async function logEvent(admin: AdminClient, jobId: string, actorId: string | null, action: string, details: Record<string, unknown> = {}) {

@@ -26,7 +26,7 @@ const SERVICES: ServiceItem[] = [
   },
   {
     icon: Wind,
-    title: 'Emissions-related decodings',
+    title: 'Emissions-related',
     description:
       'Software-side adjustments to emissions systems where they are supported for the specific ECU. Availability depends on the file and local regulations.',
     items: ['DPF and particulate filter strategies', 'AdBlue and SCR strategies', 'EGR strategy adjustments'],
@@ -45,7 +45,7 @@ export function EcuServicesPage() {
       label="ECU services"
       title="ECU File Services"
       intro="Remote file services for engine control units. Each request starts with your original file, is reviewed individually, and returns with a clear description of what has changed."
-      description="ECU file services from ZEROONEMOD: Stage 1 calibration, original file restoration, supported ECU modifications and emissions-related decodings."
+      description="ECU file services from ZEROONEMOD: Stage 1 calibration, original file restoration, supported ECU modifications and emissions-related services."
     >
       <ServiceGrid services={SERVICES} />
       <NoticeCard>

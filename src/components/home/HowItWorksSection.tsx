@@ -10,7 +10,7 @@ const STEPS = [
     title: 'Payment',
     description: 'You receive a quotation and complete the payment before the modified file is released.',
   },
-  { number: '04', title: 'File modification', description: 'The file is processed and technically reviewed.' },
+  { number: '04', title: 'File modification', description: 'The file is processed and technically reviewed by our engineers.' },
   { number: '05', title: 'Secure file delivery', description: 'Receive your completed file through a secure, time-limited download link.' },
 ];
 

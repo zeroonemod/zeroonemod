@@ -33,7 +33,6 @@ export function AttachedFiles({ error }: { error?: string }) {
       <UploadDropzone
         onFilesSelected={addFiles}
         title={files.length > 0 ? 'Add another file' : 'Drag and drop your original ECU/TCU file or click to upload'}
-        description="Any file format. Up to 100 MB per file. Multiple files allowed."
         error={error}
       />
     </>

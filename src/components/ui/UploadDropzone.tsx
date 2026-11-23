@@ -1,21 +1,29 @@
-import { useId, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
+import { useId, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { Upload } from 'lucide-react';
 import { MAX_FILE_BYTES } from '@/lib/uploadLimits';
 
 interface UploadDropzoneProps {
   onFilesSelected: (files: File[]) => void;
   title?: string;
-  description?: string;
+  description?: ReactNode;
   error?: string;
   className?: string;
   /** Smaller drop area for dashboard and admin uploads. */
   compact?: boolean;
 }
 
+/** Help text under the original-file upload (home card, wizard, guest and partner forms). */
+const ORIGINAL_FILE_HELP = (
+  <>
+    <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-neutral-300">ECU or TCU decrypted file (.bin or .ori)</span>
+    <span className="mt-1.5 block">Passenger cars only. Trucks and other heavy vehicles are not supported.</span>
+  </>
+);
+
 export function UploadDropzone({
   onFilesSelected,
   title = 'Drag and drop your original ECU/TCU file or click to upload',
-  description = 'Any file format. Up to 100 MB per file. Multiple files allowed.',
+  description = ORIGINAL_FILE_HELP,
   error,
   className = '',
   compact = false,

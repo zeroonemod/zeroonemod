@@ -1,4 +1,4 @@
-import { Cog, FileCode, RotateCcw, SlidersHorizontal, Gauge } from 'lucide-react';
+import { Cog, FileCode, RotateCcw, TriangleAlert, Gauge } from 'lucide-react';
 import { ContentPage, NoticeCard, SubmitCta } from '@/components/content/ContentPage';
 import { ServiceGrid, type ServiceItem } from '@/components/content/ServiceList';
 
@@ -25,11 +25,11 @@ const SERVICES: ServiceItem[] = [
     items: ['Restore from your stored original', 'Identification check before return'],
   },
   {
-    icon: SlidersHorizontal,
-    title: 'Gearbox-related adjustments',
+    icon: TriangleAlert,
+    title: 'DTC off on request',
     description:
-      'Targeted changes to gearbox behaviour where the platform supports them. Adjustments are limited to what the transmission can safely handle.',
-    items: ['Gear hold and kickdown behaviour', 'Manual-mode response', 'Shift logic tuning'],
+      'Selected diagnostic trouble codes switched off in the TCU software on request, where the file supports it. We confirm which codes can be removed after reviewing your file.',
+    items: ['Individual fault codes on request', 'Checked against your original file'],
   },
   {
     icon: FileCode,
@@ -45,7 +45,7 @@ export function TcuServicesPage() {
       label="TCU services"
       title="TCU File Services"
       intro="Remote file services for transmission control units. Every gearbox file is reviewed against its original calibration, and changes are limited to what the transmission supports."
-      description="TCU file services from ZEROONEMOD: transmission calibration, supported TCU modifications, original file restoration and gearbox-related adjustments."
+      description="TCU file services from ZEROONEMOD: transmission calibration, supported TCU modifications, original file restoration and DTC off on request."
     >
       <ServiceGrid services={SERVICES} />
       <NoticeCard>

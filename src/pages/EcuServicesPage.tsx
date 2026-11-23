@@ -29,7 +29,7 @@ const SERVICES: ServiceItem[] = [
     title: 'Emissions-related',
     description:
       'Software-side adjustments to emissions systems where they are supported for the specific ECU. Availability depends on the file and local regulations.',
-    items: ['DPF and particulate filter strategies', 'AdBlue and SCR strategies', 'EGR strategy adjustments'],
+    items: ['DPF and particulate filter strategies', 'AdBlue and SCR strategies', 'EGR strategy adjustments', 'DTC off on request'],
   },
   {
     icon: FileCode,

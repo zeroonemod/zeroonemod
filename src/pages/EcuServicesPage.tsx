@@ -5,6 +5,7 @@ import { ServiceGrid, type ServiceItem } from '@/components/content/ServiceList'
 const SERVICES: ServiceItem[] = [
   {
     icon: Gauge,
+    id: 'stage-1',
     title: 'Stage 1 calibration',
     description:
       'Engine control file adjustments focused on a smoother, more responsive delivery within the limits of your engine and standard components.',

@@ -7,6 +7,8 @@ export interface ServiceItem {
   title: string;
   description: string;
   items?: string[];
+  /** Anchor for links such as /ecu-services#stage-1. */
+  id?: string;
 }
 
 export function ServiceGrid({ services }: { services: ServiceItem[] }) {
@@ -19,7 +21,7 @@ export function ServiceGrid({ services }: { services: ServiceItem[] }) {
             <IconBadge>
               <Icon className="h-5 w-5" aria-hidden="true" />
             </IconBadge>
-            <h2 className="text-lg font-semibold text-white">{service.title}</h2>
+            <h2 id={service.id} className="scroll-mt-40 text-lg font-semibold text-white">{service.title}</h2>
             <p className="text-sm leading-[1.5] text-neutral-400">{service.description}</p>
             {service.items && (
               <ul className="mt-auto flex flex-col gap-2 border-t border-white/[0.08] pt-4 text-sm text-neutral-300">

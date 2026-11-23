@@ -44,9 +44,11 @@ export function StatusPanel({ job, onChanged }: PanelProps) {
   const [status, setStatus] = useState<JobStatus>(job.status);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
+  const [confirming, setConfirming] = useState(false);
 
   const save = async () => {
     if (status === job.status) return;
+    setConfirming(false);
     setBusy(true);
     setNotice(null);
     try {
@@ -70,15 +72,36 @@ export function StatusPanel({ job, onChanged }: PanelProps) {
             id="admin-status"
             label="Job status"
             value={status}
-            onChange={(event) => setStatus(event.target.value as JobStatus)}
+            onChange={(event) => {
+              setStatus(event.target.value as JobStatus);
+              setConfirming(false);
+            }}
             options={statusOptions.map((value) => ({ value, label: value }))}
           />
         </div>
-        <Button onClick={save} disabled={busy || status === job.status}>
+        <Button
+          onClick={() => (status === 'Completed' ? setConfirming(true) : save())}
+          disabled={busy || confirming || status === job.status}
+        >
           {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
           Update status
         </Button>
       </div>
+      {confirming && (
+        <div role="group" aria-label="Confirm status" className="mt-4 flex flex-col gap-3 rounded-lg border border-brand-500/40 bg-brand-500/[0.06] p-4">
+          <p className="text-sm leading-[1.5] text-neutral-100">
+            Mark {job.reference} as <span className="font-semibold text-white">Completed</span>? The customer is emailed that the job is done.
+          </p>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="ghost" size="sm" onClick={() => setConfirming(false)} autoFocus>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={save}>
+              Yes, mark as completed
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="mt-3">
         <NoticeLine notice={notice} />
       </div>

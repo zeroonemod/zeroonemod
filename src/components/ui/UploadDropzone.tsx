@@ -19,14 +19,18 @@ interface UploadDropzoneProps {
 /** Help text under the original-file upload (home card, wizard, guest and partner forms). */
 const ORIGINAL_FILE_HELP = (
   <>
-    <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-neutral-300">ECU or TCU decrypted file (.bin or .ori)</span>
-    <span className="mt-1.5 block">Passenger cars only. Trucks and other heavy vehicles are not supported.</span>
+    <span className="mx-auto block w-fit rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-semibold uppercase leading-snug tracking-[0.08em] text-neutral-300 [text-wrap:balance] sm:text-xs sm:tracking-[0.14em]">
+      ECU or TCU decrypted file (.bin or .ori)
+    </span>
+    <span className="mt-2.5 block text-xs leading-relaxed [text-wrap:balance] sm:text-sm">Passenger cars only. Trucks and other heavy vehicles are not supported.</span>
   </>
 );
 
+const DEFAULT_TITLE = 'Drag and drop your original ECU/TCU file or click to upload';
+
 export function UploadDropzone({
   onFilesSelected,
-  title = 'Drag and drop your original ECU/TCU file or click to upload',
+  title = DEFAULT_TITLE,
   description = ORIGINAL_FILE_HELP,
   error,
   className = '',
@@ -82,15 +86,25 @@ export function UploadDropzone({
         }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
-        className={`group flex cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border border-dashed px-6 text-center transition-colors duration-200 ${compact ? 'min-h-[150px] py-8' : 'min-h-[220px] py-10 sm:min-h-[260px]'} ${
+        className={`group flex cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border border-dashed px-5 text-center transition-colors duration-200 sm:px-6 ${compact ? 'min-h-[150px] py-8' : 'min-h-[200px] py-8 sm:min-h-[260px] sm:py-10'} ${
           isDragging ? 'border-brand-500 bg-brand-500/[0.06]' : 'border-white/20 bg-surface-sunken hover:border-brand-500 hover:bg-white/[0.02]'
         } ${error ? 'border-brand-500' : ''}`}
       >
         <span className="flex h-12 w-12 items-center justify-center rounded-full border border-brand-500/40 bg-brand-500/[0.08] text-brand-500 transition-transform duration-200 group-hover:-translate-y-0.5">
           {icon ?? <Upload className="h-5 w-5" aria-hidden="true" />}
         </span>
-        <div className="flex max-w-md flex-col gap-2">
-          <p className="text-base font-medium text-white">{title}</p>
+        <div className="flex max-w-md flex-col gap-3 sm:gap-2">
+          <p className="text-[15px] font-medium leading-snug text-white [text-wrap:balance] sm:text-base">
+            {title === DEFAULT_TITLE ? (
+              <>
+                {/* Phones have no drag and drop: a short, direct instruction. */}
+                <span className="sm:hidden">Tap to upload your original ECU/TCU file</span>
+                <span className="hidden sm:inline">{title}</span>
+              </>
+            ) : (
+              title
+            )}
+          </p>
           <p id={`${inputId}-help`} className="text-sm leading-relaxed text-neutral-400">
             {description}
           </p>

@@ -20,7 +20,7 @@ interface UploadDropzoneProps {
 const ORIGINAL_FILE_HELP = (
   <>
     <span className="mx-auto block w-fit rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-semibold uppercase leading-snug tracking-[0.08em] text-neutral-300 [text-wrap:balance] sm:text-xs sm:tracking-[0.14em]">
-      ECU or TCU decrypted file (.bin or .ori)
+      ECU or TCU decrypted file
     </span>
     <span className="mt-2.5 block text-xs leading-relaxed [text-wrap:balance] sm:text-sm">Cars only</span>
   </>

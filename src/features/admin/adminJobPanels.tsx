@@ -4,7 +4,7 @@ import { Link2, Loader2, Mail, Trash2 } from 'lucide-react';
 import { NoticeLine, type Notice } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
-import { TextArea } from '@/components/ui/FormField';
+import { TextArea, TextInput } from '@/components/ui/FormField';
 import { SelectInput } from '@/components/ui/Select';
 import { callFunction, errorMessage, notify } from '@/lib/api';
 import { copyText } from '@/lib/clipboard';
@@ -310,12 +310,14 @@ export function DeleteJobPanel({ job, hasPayments }: { job: JobRow; hasPayments:
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
+  const [typed, setTyped] = useState('');
+  const typedOk = typed.trim().toUpperCase() === job.reference;
 
   const remove = async () => {
     setBusy(true);
     setNotice(null);
     try {
-      await callFunction('admin-users', { action: 'delete_job', jobId: job.id });
+      await callFunction('admin-users', { action: 'delete_job', jobId: job.id, confirmReference: hasPayments ? job.reference : undefined });
       navigate('/admin/jobs', { replace: true, state: { deleted: job.reference } });
     } catch (error) {
       setNotice({ tone: 'error', text: errorMessage(error) });
@@ -327,13 +329,26 @@ export function DeleteJobPanel({ job, hasPayments }: { job: JobRow; hasPayments:
     <Panel title="Delete job">
       <p className="mb-4 text-sm leading-[1.5] text-neutral-400">
         {hasPayments
-          ? 'This job has a recorded payment, so it is kept for your records. You can still delete its files above.'
+          ? 'This job has a recorded payment. Deleting it also removes the payment record, so only do this for tests or mistakes.'
           : 'Permanently removes this job with its files, messages, notes and activity log. Use it for tests, spam or duplicates.'}
       </p>
+      {hasPayments && (
+        <div className="mb-4 max-w-xs">
+          <TextInput
+            id="delete-confirm"
+            label={`Type ${job.reference} to confirm`}
+            autoComplete="off"
+            spellCheck={false}
+            className="font-mono uppercase"
+            value={typed}
+            onChange={(event) => setTyped(event.target.value)}
+          />
+        </div>
+      )}
       <ConfirmButton
         busy={busy}
-        disabled={hasPayments}
-        message={`Permanently delete ${job.reference}? Its files, messages, notes and activity log are deleted too. This cannot be undone.`}
+        disabled={hasPayments && !typedOk}
+        message={`Permanently delete ${job.reference}? Its files, ${hasPayments ? 'payment record, ' : ''}messages, notes and activity log are deleted too. This cannot be undone.`}
         confirmLabel="Yes, delete job"
         onConfirm={remove}
       >

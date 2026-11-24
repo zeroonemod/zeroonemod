@@ -112,7 +112,10 @@ async function deleteJob(admin: AdminClient, body: Record<string, unknown>) {
 
   const { count, error: paymentError } = await admin.from('payments').select('id', { count: 'exact', head: true }).eq('job_id', jobId);
   if (paymentError) throw paymentError;
-  if ((count ?? 0) > 0) throw new Error('This job has a recorded payment, so it is kept for your records. You can still delete its files.');
+  // Paid jobs can be deleted too (tests, mistakes), but only when the admin typed the job reference.
+  if ((count ?? 0) > 0 && body.confirmReference !== job.reference) {
+    throw new Error(`This job has a recorded payment. Type ${job.reference} to confirm the deletion.`);
+  }
 
   // Remove everything stored under the job's folder, including files no longer listed on the job.
   const paths = new Set<string>();

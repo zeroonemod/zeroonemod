@@ -8,6 +8,7 @@ import { LoadingState } from '@/components/ui/LoadingState';
 import { callFunction, errorMessage } from '@/lib/api';
 import { isValidEmail } from '@/lib/requestForms';
 import { supabase } from '@/lib/supabase';
+import { clearSocialLinksCache } from '@/lib/socialLinks';
 import { AdminPageHeader, Panel, useAdminSettings, type AdminSettings } from '@/features/admin/adminShared';
 import { exportJobsCsv, exportPaymentsCsv } from '@/features/admin/AdminJobsPage';
 import { useAdminJobs } from '@/features/admin/useAdminJobs';
@@ -40,6 +41,7 @@ export function AdminSettingsPage() {
       <AccountPanel />
       <TeamPanel />
       <EmailSettings settings={settings} onSaved={reload} />
+      <SocialLinksSettings settings={settings} onSaved={reload} />
       <div className="grid gap-6 xl:grid-cols-2">
         <GeneralSettings initialDays={settings.retention_days} initialAuto={settings.auto_delete_enabled} onSaved={reload} />
         <ExportsPanel />
@@ -102,6 +104,64 @@ function EmailSettings({ settings, onSaved }: { settings: AdminSettings; onSaved
           <NoticeLine notice={notice} />
           <Button type="submit" className="sm:ml-auto">
             Save email addresses
+          </Button>
+        </div>
+      </form>
+    </Panel>
+  );
+}
+
+const SOCIAL_URL = /^https:\/\/\S+$/;
+const WHATSAPP_NUMBER = /^\+?[0-9 ]{6,20}$/;
+
+/** Instagram, Facebook and WhatsApp in the footer. Empty field = icon without a link. */
+function SocialLinksSettings({ settings, onSaved }: { settings: AdminSettings; onSaved: () => void }) {
+  const [instagram, setInstagram] = useState(settings.instagram_url);
+  const [facebook, setFacebook] = useState(settings.facebook_url);
+  const [whatsapp, setWhatsapp] = useState(settings.whatsapp_number);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<Notice>(null);
+
+  const save = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const values = { instagram_url: instagram.trim(), facebook_url: facebook.trim(), whatsapp_number: whatsapp.trim() };
+    if ([values.instagram_url, values.facebook_url].some((url) => url && (!SOCIAL_URL.test(url) || url.length > 300))) {
+      return setNotice({ tone: 'error', text: 'Links must start with https://' });
+    }
+    if (values.whatsapp_number && !WHATSAPP_NUMBER.test(values.whatsapp_number)) {
+      return setNotice({ tone: 'error', text: 'Enter the WhatsApp number with country code, for example +355 69 123 4567.' });
+    }
+    setBusy(true);
+    setNotice(null);
+    const { error } = await supabase.from('admin_settings').update(values).eq('id', true);
+    setBusy(false);
+    if (error) return setNotice({ tone: 'error', text: 'Social links could not be saved.' });
+    clearSocialLinksCache();
+    setNotice({ tone: 'success', text: 'Saved. The footer shows the new links.' });
+    onSaved();
+  };
+
+  return (
+    <Panel title="Social links (footer)">
+      <form onSubmit={save} noValidate className="flex flex-col gap-5">
+        <div className="grid gap-5 lg:grid-cols-3">
+          <TextInput id="social-instagram" label="Instagram" type="url" placeholder="https://www.instagram.com/…" value={instagram} onChange={(e) => setInstagram(e.target.value)} />
+          <TextInput id="social-facebook" label="Facebook" type="url" placeholder="https://www.facebook.com/…" value={facebook} onChange={(e) => setFacebook(e.target.value)} />
+          <TextInput
+            id="social-whatsapp"
+            label="WhatsApp number"
+            type="tel"
+            placeholder="+355 69 123 4567"
+            hint="With country code. Visitors open a WhatsApp chat with this number."
+            value={whatsapp}
+            onChange={(e) => setWhatsapp(e.target.value)}
+          />
+        </div>
+        <p className="text-xs text-neutral-500">Leave a field empty and its icon shows without a link.</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <NoticeLine notice={notice} />
+          <Button type="submit" disabled={busy} className="sm:ml-auto">
+            Save social links
           </Button>
         </div>
       </form>

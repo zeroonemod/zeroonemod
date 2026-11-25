@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import { Facebook, Instagram, type LucideProps } from 'lucide-react';
-import { FOOTER_LEGAL_LINKS, FOOTER_NAV_COLUMNS, SOCIAL_LINKS } from '@/lib/navigation';
+import { FOOTER_LEGAL_LINKS, FOOTER_NAV_COLUMNS } from '@/lib/navigation';
 import { SITE_CONFIG } from '@/lib/siteConfig';
+import { useSocialLinks, whatsappLink } from '@/lib/socialLinks';
 import { Wordmark } from '@/components/layout/Wordmark';
 
 const linkClass = 'text-sm text-neutral-300 transition-colors duration-200 hover:text-brand-400';
@@ -21,6 +22,13 @@ const SOCIAL_ICONS = { WhatsApp: WhatsAppIcon, Instagram, Facebook } as const;
 
 export function SiteFooter() {
   const year = new Date().getFullYear();
+  // Set in Admin > Settings > Social links; an icon without a link shows until one is saved.
+  const social = useSocialLinks();
+  const SOCIAL_LINKS: { label: keyof typeof SOCIAL_ICONS; href: string }[] = [
+    { label: 'WhatsApp', href: whatsappLink(social.whatsapp) },
+    { label: 'Instagram', href: social.instagram },
+    { label: 'Facebook', href: social.facebook },
+  ];
 
   return (
     <footer className="border-t border-t-brand-500/70 border-white/[0.08] bg-canvas">

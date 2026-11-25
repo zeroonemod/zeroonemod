@@ -37,6 +37,9 @@ export interface AdminSettings {
   notification_email: string;
   support_email: string;
   billing_email: string;
+  instagram_url: string;
+  facebook_url: string;
+  whatsapp_number: string;
   retention_days: number;
   auto_delete_enabled: boolean;
   templates: MessageTemplate[];
@@ -49,7 +52,7 @@ export function useAdminSettings() {
   const reload = useCallback(async () => {
     const { data, error: queryError } = await supabase
       .from('admin_settings')
-      .select('notification_email, support_email, billing_email, retention_days, auto_delete_enabled, templates')
+      .select('notification_email, support_email, billing_email, instagram_url, facebook_url, whatsapp_number, retention_days, auto_delete_enabled, templates')
       .eq('id', true)
       .maybeSingle();
     if (queryError || !data) {

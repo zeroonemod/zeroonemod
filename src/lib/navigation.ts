@@ -19,16 +19,6 @@ export const FOOTER_NAV_COLUMNS = [
   ],
 ] as const;
 
-/**
- * Social profiles in the footer. Leave `href` empty until the profile link is ready:
- * the icon is then shown without a link.
- */
-export const SOCIAL_LINKS: { label: 'WhatsApp' | 'Instagram' | 'Facebook'; href: string }[] = [
-  { label: 'WhatsApp', href: '' },
-  { label: 'Instagram', href: '' },
-  { label: 'Facebook', href: '' },
-];
-
 export const FOOTER_LEGAL_LINKS = [
   { label: 'Privacy Policy', to: '/privacy-policy' },
   { label: 'Terms & Conditions', to: '/terms' },

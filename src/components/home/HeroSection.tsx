@@ -1,3 +1,4 @@
+import { Globe } from 'lucide-react';
 import { ButtonLink, buttonClasses } from '@/components/ui/Button';
 import { UploadCard } from '@/components/home/UploadCard';
 
@@ -21,6 +22,11 @@ export function HeroSection() {
           Professional remote ECU and TCU file editing, handled individually by an engineering team. Send us your
           original file, we review it against your vehicle, and you receive the completed file through a secure
           download link.
+        </p>
+
+        <p className="-mb-2 max-w-xs text-sm leading-relaxed text-neutral-300 [text-wrap:balance] sm:max-w-none">
+          <Globe className="mr-1.5 inline h-4 w-4 -translate-y-px align-middle text-brand-500" aria-hidden="true" />
+          We reply in English, Spanish, Italian or Albanian.
         </p>
 
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:gap-4">

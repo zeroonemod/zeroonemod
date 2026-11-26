@@ -26,7 +26,7 @@ export function HeroSection() {
 
         <p className="-mb-2 max-w-xs text-sm leading-relaxed text-neutral-300 [text-wrap:balance] sm:max-w-none">
           <Globe className="mr-1.5 inline h-4 w-4 -translate-y-px align-middle text-brand-500" aria-hidden="true" />
-          We reply in English, Spanish, Italian or Albanian.
+          We reply in English, Spanish or Italian.
         </p>
 
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:gap-4">

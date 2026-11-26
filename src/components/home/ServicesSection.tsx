@@ -37,7 +37,7 @@ export function ServicesSection() {
       <div className="mx-auto flex max-w-7xl flex-col gap-14 px-5 sm:px-8">
         <SectionHeading
           eyebrow="Services"
-          description="Availability depends on the control unit and the vehicle."
+          title="Availability depends on the control unit and the vehicle"
         />
         <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {SERVICES.map((service) => (

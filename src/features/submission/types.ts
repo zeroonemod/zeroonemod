@@ -12,7 +12,6 @@ export const SERVICE_OPTIONS: { value: RequestedService; label: string; descript
   { value: 'original_restoration', label: 'Original file restoration', description: 'Restore a clean original from your backup.' },
   { value: 'decoding', label: 'Decoding (DPF, AdBlue, etc.)', description: 'Supported decodings for compatible files.' },
   { value: 'other_modification', label: 'Other supported modification', description: 'Any other modification we currently offer.' },
-  { value: 'not_sure', label: 'Not sure', description: 'We will recommend the right service after review.' },
 ];
 
 export const FUEL_OPTIONS = ['Petrol', 'Diesel', 'Hybrid', 'Other'] as const;

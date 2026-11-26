@@ -29,11 +29,11 @@ export function SubmitChoice({ onGuest, onAccount }: SubmitChoiceProps) {
           Continue as guest
         </Button>
         <Button size="lg" variant="secondary" onClick={onAccount} className="w-full sm:flex-1">
-          Log in or create an account
+          Log in / Create account
         </Button>
       </div>
 
-      <p className="text-sm leading-[1.5] text-neutral-400">As a guest you will be contacted directly by our team.</p>
+      <p className="text-sm leading-[1.5] text-neutral-400">Submit your file without creating an account. Our team will review your request and contact you with the next steps.</p>
 
       <p className="border-t border-white/[0.08] pt-5 text-xs text-neutral-500">
         Already have an account?{' '}
